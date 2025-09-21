@@ -1,0 +1,27 @@
+# Build artifacts
+bin/
+obj/
+out/
+*.dll
+*.exe
+*.pdb
+
+# AvaloniaUI
+*.axaml.cs
+*.g.cs
+
+# F# interactive
+*.fsx.lock
+
+# IDE/editor configs
+.vscode/
+*.suo
+*.user
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+*.tmp
