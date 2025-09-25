@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Add your ordinance books here in compile order -->
+    <Compile Include="Foundations/FirstOrderLogic.fs" />
+  </ItemGroup>
+
+</Project>
