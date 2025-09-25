@@ -11,7 +11,7 @@ Every ordinance in this district is designed to be:
 - **Inspectable** — remixers can trace every symbol and connective.  
 - **Narratable** — ordinances are documented as signage charters.  
 - **Legacy‑worthy** — revisions are preserved as part of the civic record.  
-  
+
 ---
 
 ## Purpose
@@ -30,15 +30,6 @@ Every ordinance in this district is designed to be:
 - **Current Ordinances:**  
   - [First Order Logic (FOL)](Foundations/FirstOrderLogic.md) — defines terms, formulas, connectives, and quantifiers.  
 
-### 2. Services *(planned)*
-- Provide render profiles and signage dialects as civic utilities.  
-- Deliver consistent ways to display, compress, or expand formulas across the city.  
-  
-
-### 3. Hygiene *(planned)*
-- Substitution, alpha‑renaming, and fresh variable generation.  
-- Safeguards lawful reasoning and prevents variable capture.  
-
 ---
 
 ## Companion Ordinances
@@ -49,15 +40,9 @@ Each ordinance book in this district includes:
 
 ---
 
-## Remix Rights
-- Citizens may extend the grammar with new connectives or quantifiers.  
-- Render profiles allow dialect‑specific signage.  
-- Hygiene ordinances safeguard lawful substitution.  
-- Documentation is narratable and remix‑friendly by design.  
-
----
-
 ## Crosslinks
-- [FunctionaL City — City Hall](../README.md)  
-- [Foundations/FirstOrderLogic.md](Foundations/FirstOrderLogic.md) — First Order Logic ordinance book.  
-- *(Future crosslinks: Render Ordinance, Hygiene Ordinance, Algebraic Structures)*  
+*City Limits*
+- [🏛️ FunctionaL City — City Hall](../README.md)
+
+*First Order Logic ordinance book.*
+- [📘 Foundations/FirstOrderLogic.md](Foundations/FirstOrderLogic.md)  
