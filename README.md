@@ -10,7 +10,7 @@ FunctionaL City is a living infrastructure project—built from a civil engineer
 
 >This repository is a technical foundation for real workflows. It’s designed to be inspectable, remixable, and educational. 
 
-Whether you're here to contribute, audit, or adapt it for your own civic stack, you're welcome.FunctionaL City is here to help—not to confuse. If something feels unclear, open an issue. If something feels inspiring, fork it and build your own district.
+Whether you're here to contribute, audit, or adapt it for your own civic stack, you're welcome. FunctionaL City is here to help—not to confuse. If something feels unclear, open an issue. If something feels inspiring, fork it and build your own district.
 
 Thanks for visiting. Let’s build something narratable together.
 

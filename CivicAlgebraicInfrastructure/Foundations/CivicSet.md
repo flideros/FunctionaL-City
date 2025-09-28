@@ -49,6 +49,17 @@ This ordinance establishes the foundations of **Civic Sets** within the algebrai
   - `Note`: Civic commentary.  
   - `Custom`: Extension point (`string * string`).
 
+```
+| Metadata Item         | Source Ordinance         | Derivation Path                                      | Remix Rights             |
+|-----------------------|--------------------------|------------------------------------------------------|--------------------------|
+| SetTheoretic          | ZFC, Cantor              | Declared via constructor or derived from set traits  | Declare, Derive          |
+| FOL                   | Peano, FOL               | Derived from formula structure and quantifier scope  | Derive                   |
+| Provenance            | Civic signage            | Free-form declaration of origin                      | Declare                  |
+| Tag                   | Civic signage            | Free-form civic-native annotation                    | Declare, Extend          |
+| Note                  | Civic signage            | Commentary block or onboarding signage               | Declare                  |
+| Custom (key, value)   | Extension ordinance      | Declared by remixers for domain-specific overlays    | Declare, Extend          |
+```
+
 ```fsharp
 type CivicSetMetadataItem =
     | SetTheoretic of SetTheoreticMetadata
