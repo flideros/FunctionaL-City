@@ -29,7 +29,7 @@ Every ordinance in this district is designed to be:
 - **Scope:** Core ordinance books for logic and algebra.  
 - **Current Ordinances:**  
   - [First Order Logic (FOL)](Foundations/FirstOrderLogic.md) — defines terms, formulas, connectives, and quantifiers.  
-  - [Civi Set](Foundations/CivicSet.md) — defines lawful set membership, civic-native extensionality, and signage-style comprehension.
+  - [Civic Set](Foundations/CivicSet.md) — defines lawful set membership, civic-native extensionality, and signage-style comprehension.
 ---
 
 ## Companion Ordinances
