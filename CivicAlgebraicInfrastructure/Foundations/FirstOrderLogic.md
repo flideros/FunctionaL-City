@@ -164,3 +164,4 @@ This ordinance is designed to be **remixable**:
 
 ## Crosslinks
 - [🧮 Civic Algebraic Infrastructure](../README.md)
+- [📘 CivicSet.md](CivicSet.md)

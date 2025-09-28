@@ -1,0 +1,125 @@
+# Civic Set Ordinance Book
+
+**Subdivision:** CivicAlgebraicInfrastructure.Foundations.CivicSet  
+**Companion files:**  
+- [CivicSet.fs](CivicSet.fs) — ordinance code  
+- [CivicSet.fsx](CivicSet.fsx) — interactive case law  
+
+---
+
+## Preamble  
+This ordinance establishes the foundations of **Civic Sets** within the algebraic infrastructure. A `CivicSet` is a narratable domain—defined by its symbolic signage, logical overlays, and metadata zoning. Each set is a lawful citizen of the infrastructure, equipped with sample elements, membership predicates, and civic annotations for remixers.
+
+---
+
+## Purpose  
+- Define lawful **domains** with symbolic and logical signage.  
+- Provide **sample elements** for inspection and onboarding.  
+- Declare **ordering signage** (min, max, compare).  
+- Integrate **FOL overlays** for logical reasoning.  
+- Maintain a **metadata registry** for set-theoretic and logical properties.  
+- Enable **closure, implication, and equivalence** overlays for civic reasoning.
+
+---
+
+## Ordinance Sections
+
+### 1. Domain Model  
+- **Symbol**: Unicode or civic-native signage (e.g. ℕ, ℤ, ℝ, ℂ).  
+- **Formula**: Optional FOL signage overlay (`Formula<'Symbol>`).  
+- **Contains**: Membership predicate (`'Concrete -> bool`).  
+- **Elements**: Sample enumeration (`seq<'Concrete>`), used for onboarding and inspection.
+
+### 2. Ordering Signage  
+- **Compare**: Optional civic-native comparison function.  
+- **Min / Max**: Declared extrema, if applicable.  
+- **Lawfulness**: Ordering signage must respect domain semantics (e.g. ℂ is unordered).
+
+### 3. Metadata  
+- **SetTheoreticMetadata**:
+  - `Cardinality`: Finite, ℵ₀, Continuum, or Other.  
+  - `Countability`: Countable or Uncountable.  
+  - `OrderType`: TotalOrder, PartialOrder, or Unordered.  
+- **FOLMetadata**:
+  - `Decidability`: Decidable, SemiDecidable, Undecidable.  
+  - `Enumerability`: Enumerable or NonEnumerable.  
+- **Other CivicSetMetadataItem**:
+  - `Provenance`: e.g. "Defined in ZFC", "Derived from Peano axioms".  
+  - `Tag`: Free-form signage.  
+  - `Note`: Civic commentary.  
+  - `Custom`: Extension point (`string * string`).
+
+```fsharp
+type CivicSetMetadataItem =
+    | SetTheoretic of SetTheoreticMetadata
+    | FOL of FOLMetadata
+    | Provenance of string
+    | Tag of string
+    | Note of string
+    | Custom of string * string
+```
+---
+## Zoning Map
+```
+┌──────────────────────────────┐
+│ ICivicSet<'Concrete,'Symbol> │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────┐
+│ Symbol : string option       │
+│ Formula : Formula<'Symbol>   │
+│ Contains : 'Concrete -> bool │
+│ Elements : seq<'Concrete>    │
+└────────────┬─────────────────┘
+             │
+             ▼
+┌──────────────────────────────────────────────────┐
+│ Compare : option<'Concrete -> 'Concrete -> int>  │
+│ Min / Max : option<'Concrete>                    │
+└────────────┬─────────────────────────────────────┘
+             │
+             ▼
+┌──────────────────────────────────────┐
+│ Metadata : CivicSetMetadataItem list │
+└────────────┬─────────────────────────┘
+             │
+             ▼
+┌──────────────────┐
+│ Logical Overlays │
+│ IsClosedUnder    │
+│ Implies          │
+│ EquivalentTo     │
+└──────────────────┘
+```
+---
+
+## Case Law (see `.fsx`)
+- Example: Defining ℕ with `Symbol = ℕ`, `Elements = Seq.initInfinite id`, and `Cardinality = ℵ₀.`
+
+- Example: Declaring ℂ as `Unordered`, `Uncountable`, with no `Compare`.
+
+- Example: Annotating ℚ with `FOLMetadata = { Decidable; Enumerable }`.
+
+- Example: Testing closure: `ℤ.IsClosedUnder (fun s -> s)` returns `true`.
+
+- Example: Inspecting signage: printfn "ℝ formula: %A" reals.Formula.
+---
+
+## Commentary
+This ordinance is designed to be **remixable**:  
+- Citizens may define new domains with lawful signage.
+
+- Metadata is optional but encouraged for civic clarity.
+
+- Logical overlays are declarative, not enforced—remixers may opt in.
+
+- Civic sets may serve as onboarding signage, audit overlays, or dispatch zones.
+
+- FOL integration enables symbolic reasoning across domains.
+
+---
+
+## Crosslinks
+- [🧮 Civic Algebraic Infrastructure](../README.md)
+- [📘 FirstOrderLogic.md](FirstOrderLogic.md)

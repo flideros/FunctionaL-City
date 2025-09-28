@@ -45,4 +45,7 @@ Each ordinance book in this district includes:
 - [🏛️ FunctionaL City — City Hall](../README.md)
 
 *First Order Logic ordinance book.*
-- [📘 Foundations/FirstOrderLogic.md](Foundations/FirstOrderLogic.md)  
+- [📘 Foundations/FirstOrderLogic.md](Foundations/FirstOrderLogic.md)
+  
+*Civic Set ordinance book.*
+- [📘 Foundations/CivicSet.md](Foundations/CivicSet.md)

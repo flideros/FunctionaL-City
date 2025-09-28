@@ -119,6 +119,78 @@ let rationals =
         member _.EquivalentTo _  = false }
 
 // -----------------------------
+// Example: ℝ = reals
+// -----------------------------
+
+let realSymbol =
+    { Name = "Real"; Kind = PredicateKind; Arity = Some 1 }
+
+let xVar =
+    Var { Name = "x"; Kind = VariableKind; Arity = None }
+
+let realFormulaFOL : Formula<Symbol> =
+    Quantified {
+        Bound = ForAll { Name = "x"; Kind = VariableKind; Arity = None }
+        Body =
+            Atomic (Predicate (realSymbol, [xVar]))
+    }
+
+let reals =
+    { new ICivicSet<float, Symbol> with
+        member _.Symbol       = Some "\u211D"   // ℝ
+        member _.Formula      = Some realFormulaFOL
+        member _.Contains _   = true
+        member _.Elements     = Seq.initInfinite (fun n -> float n / 10.0) // sample density
+        member _.Compare      = Some compare
+        member _.Min          = None
+        member _.Max          = None
+        member _.Metadata     =
+            [ SetTheoretic { Cardinality  = Some Continuum
+                             Countability = Some Uncountable
+                             OrderType    = Some TotalOrder } ]
+        member _.IsClosedUnder _ = true
+        member _.Implies _       = false
+        member _.EquivalentTo _  = false }
+
+// -----------------------------
+// Example: ℂ = complex
+// -----------------------------
+
+let complexSymbol =
+    { Name = "Complex"; Kind = PredicateKind; Arity = Some 1 }
+
+let zVar =
+    Var { Name = "z"; Kind = VariableKind; Arity = None }
+
+let complexFormulaFOL : Formula<Symbol> =
+    Quantified {
+        Bound = ForAll { Name = "z"; Kind = VariableKind; Arity = None }
+        Body =
+            Atomic (Predicate (complexSymbol, [zVar]))
+    }
+
+let complex =
+    { new ICivicSet<System.Numerics.Complex, Symbol> with
+        member _.Symbol       = Some "\u2102"   // ℂ
+        member _.Formula      = Some complexFormulaFOL
+        member _.Contains _   = true
+        member _.Elements     =
+            Seq.initInfinite (fun n ->
+                let r = float (n / 100)
+                let i = float (n % 100) / 10.0
+                System.Numerics.Complex(r, i))
+        member _.Compare      = None // no total order
+        member _.Min          = None
+        member _.Max          = None
+        member _.Metadata     =
+            [ SetTheoretic { Cardinality  = Some Continuum
+                             Countability = Some Uncountable
+                             OrderType    = None } ]
+        member _.IsClosedUnder _ = true
+        member _.Implies _       = false
+        member _.EquivalentTo _  = false }
+
+// -----------------------------
 // Quick tests
 // -----------------------------
 
@@ -128,4 +200,11 @@ printfn "First 10 ℕ: %A" (naturalNumbers.Elements |> Seq.take 10 |> Seq.toList
 printfn "ℕ formula: %A" naturalNumbers.Formula
 
 printfn "ℤ sample: %A" (integers.Elements |> Seq.take 10 |> Seq.toList)
+
 printfn "ℚ sample first 20 rationals (diagonal): %A" (rationals.Elements |> Seq.take 20 |> Seq.toList)
+
+printfn "ℝ formula: %A" reals.Formula
+printfn "ℝ sample: %A" (reals.Elements |> Seq.take 10 |> Seq.toList)
+
+printfn "ℂ formula: %A" complex.Formula
+printfn "ℂ sample: %A" (complex.Elements |> Seq.take 10 |> Seq.toList)
