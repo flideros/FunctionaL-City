@@ -32,7 +32,7 @@ module DomainModel =
         { Bound : Quantifier<'Symbol>
           Body  : Formula<'Symbol> }
 
-    type ConnectiveKind =
+    type ConnectiveKind = //Added 'Kind' to avoid naming collisions down stream.
         | Not
         | And
         | Or
@@ -46,6 +46,31 @@ module DomainModel =
         | ConverseNonImplication
         | NonImplication
         | Nonequivalence
+
+    type Decidability =
+        | Decidable
+        | SemiDecidable
+        | Undecidable
+
+    type Enumerability =
+        | Enumerable
+        | NonEnumerable
+    
+    type FOLMetadata =
+        { Decidability : Decidability option
+          Enumerability: Enumerability option }
+
+    type SymbolKind =
+        | VariableKind
+        | ConstantKind
+        | FunctionKind
+        | PredicateKind
+
+    type Symbol =
+        { Name  : string
+          Kind  : SymbolKind
+          Arity : int option }   // only meaningful for functions/predicates
+    
 
 module Connectives=
     open DomainModel    
