@@ -32,5 +32,5 @@ FunctionaL City is evolving. New infrastructure is being planned and built every
 
 - [📜 Founding Vision: What is FunctionaL City?](BlogDistrict/CityHall/250919_FoundingVision.md)
 - [🧾 Blog District](BlogDistrict/README.md)
-- [🧮 Civic Algebraic Infractructure](CivicAlgebraicInfrastructure/README.md)
+- [🧮 Civic Algebraic Infrastructure](CivicAlgebraicInfrastructure/README.md)
 
