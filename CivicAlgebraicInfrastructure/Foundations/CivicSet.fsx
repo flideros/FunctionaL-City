@@ -1,9 +1,9 @@
 #load "FirstOrderLogic.fs"
 #load "CivicSet.fs"
 
-open CivicAlgebraicInfrastructure.Foundations.CivicSet.DomainModel
 open CivicAlgebraicInfrastructure.Foundations.FOL.DomainModel
-
+open CivicAlgebraicInfrastructure.Foundations.CivicSet.DomainModel
+open CivicAlgebraicInfrastructure.Foundations.CivicSet.Operations
 
 // -----------------------------
 // Example: ℕ = { x | x ≥ 0 }
@@ -208,3 +208,26 @@ printfn "ℝ sample: %A" (reals.Elements |> Seq.take 10 |> Seq.toList)
 
 printfn "ℂ formula: %A" complex.Formula
 printfn "ℂ sample: %A" (complex.Elements |> Seq.take 10 |> Seq.toList)
+
+(*
+type SimpleSet(elements: seq<int>) =
+    interface ICivicSet<int, string> with
+        member _.Symbol = Some "SimpleSet"
+        member _.Formula = None
+        member _.Contains x = elements |> Seq.contains x
+        member _.Elements = elements
+        member _.Compare = Some compare
+        member _.Min = elements |> Seq.min |> Some
+        member _.Max = elements |> Seq.max |> Some
+        member _.Metadata = [Tag "Test Set"]
+        member _.IsClosedUnder _ = true
+        member _.Implies _ = false
+        member _.EquivalentTo _ = false
+
+let a = SimpleSet([1; 2; 3]) :> ICivicSet<int, string>
+let b = SimpleSet([1; 2; 3; 4; 5]) :> ICivicSet<int, string>
+let c = SimpleSet([2; 3]) :> ICivicSet<int, string>
+
+let test1 = isSubsetOf a b // true
+let test2 = isSubsetOf c a // true
+let test3 = isSubsetOf b a // false*)

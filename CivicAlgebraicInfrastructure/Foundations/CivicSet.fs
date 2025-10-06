@@ -31,7 +31,7 @@ module DomainModel =
         | Note of string
         | Custom of string * string // extension point
 
-// Interface   
+    // Interface   
     type ICivicSet<'Concrete,'Symbolic> =
         abstract member Symbol : string option
         abstract member Formula : Formula<'Symbolic> option
@@ -50,3 +50,11 @@ module DomainModel =
         abstract member IsClosedUnder : (ICivicSet<'Concrete,'Symbolic> -> ICivicSet<'Concrete,'Symbolic>) -> bool
         abstract member Implies : ICivicSet<'Concrete,'Symbolic> -> bool
         abstract member EquivalentTo : ICivicSet<'Concrete,'Symbolic> -> bool
+
+
+   
+module Operations =
+    open DomainModel
+
+    let isSubsetOf (a: ICivicSet<'T,'S>) (b: ICivicSet<'T,'S>) : bool =
+        a.Elements |> Seq.forall b.Contains

@@ -7,7 +7,9 @@
 
   <ItemGroup>
     <!-- Add your ordinance books here in compile order -->
+    <Compile Include="Foundations/Primitives.fs" />
     <Compile Include="Foundations/FirstOrderLogic.fs" />
+    <Compile Include="Foundations/CivicSet.fs" />
   </ItemGroup>
 
 </Project>

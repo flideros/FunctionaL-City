@@ -70,7 +70,6 @@ module DomainModel =
         { Name  : string
           Kind  : SymbolKind
           Arity : int option }   // only meaningful for functions/predicates
-    
 
 module Connectives=
     open DomainModel    
