@@ -29,9 +29,11 @@ module LiftedCore =
     let getUnionCasesCached (t: Type) : UnionCaseInfo[] =
       unionCasesCache.GetOrAdd(t, fun tt -> FSharpType.GetUnionCases tt)
 
+    /// Wraps FSharpType.IsUnion in a fail-safe, making it a reflection probe with graceful fallback.
     let safeIsUnion (t: Type) : bool =
       try FSharpType.IsUnion t with _ -> false
 
+    /// Operates on Type.FullName, which is metadata exposed by reflection, but the function itself is a string predicate.
     let fullNameContains (token: string) (t: Type) : bool =
       match t, t.FullName with
       | null, _ -> false
