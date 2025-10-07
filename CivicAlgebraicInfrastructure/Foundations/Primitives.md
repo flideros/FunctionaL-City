@@ -1,6 +1,6 @@
 ## 🏛️ Reflection in Lifted Core — `Primitives.fs`
 
-This table categorizes each helper by its civic role, reflection risk, and provenance guarantees. Use it to guide remixers through lawful traversal, canonicalization, and provenance preservation.
+This table categorizes each helper by its civic role, reflection risk, and provenance guarantees. 
 ```
 | Helper Function                | Civic Role                            | Reflection Risk  | Provenance Guarantee   | Notes                                         |
 |--------------------------------|---------------------------------------|------------------|------------------------|------------------------------------------     |
