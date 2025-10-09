@@ -11,13 +11,13 @@ open CivicAlgebraicInfrastructure.Foundations.Primitives.Lifted
 
 // === Sample Provenance ===
 // Define sample provenance records to simulate sensor lineage and civic steps
-let p1 = { SourceName = "SensorA"; Step = 1 }
-let p2 = { SourceName = "SensorB"; Step = 2 }
-let p3 = { SourceName = "SensorC"; Step = 3 }
-let pA = { SourceName = "AlphaSensor"; Step = 11 }
-let pB = { SourceName = "BetaSensor"; Step = 12 }
-let pN1 = { SourceName = "Nest1"; Step = 100 }
-let pN2 = { SourceName = "Nest2"; Step = 200 }
+let p1 = { Provenance.empty with SourceName = "SensorA"; Step = 1 }
+let p2 = { Provenance.empty with SourceName = "SensorB"; Step = 2 }
+let p3 = { Provenance.empty with SourceName = "SensorC"; Step = 3 }
+let pA = { Provenance.empty with SourceName = "AlphaSensor"; Step = 11 }
+let pB = { Provenance.empty with SourceName = "BetaSensor"; Step = 12 }
+let pN1 = { Provenance.empty with SourceName = "Nest1"; Step = 100 }
+let pN2 = { Provenance.empty with SourceName = "Nest2"; Step = 200 }
 
 // === Sample Payloads ===
 // Construct LiftedCells with optional provenance
@@ -62,6 +62,14 @@ let deep =
             }
     }
 
+/// Adds a timestamp and note to a provenance record
+let addSignage (note: string) (prov: Provenance) : Provenance =
+    { prov with
+        Timestamp = Some DateTime.Now
+        Note = note }
+let p1Signed = addSignage "Initial sensor reading" p1
+printfn "Signed Provenance: %A" p1Signed
+
 // === Civic Printer ===
 // Recursively print Lifted structure with indentation for nesting
 let printLifted lifted =
@@ -101,7 +109,9 @@ printfn "Count (mixed): %d" (count mixed)
 // === Reassigning Provenance ===
 // Override provenance across all nodes in a nested ordinance
 printfn "\n=== Reassigning Provenance ==="
-let reassigned : Lifted<string, int> = reassignProvenance { SourceName = "Override"; Step = 99 } nested
+let reassigned : Lifted<string, int> = reassignProvenance { Provenance.empty with SourceName = "Override"; Step = 99 } nested
 printLifted nested
 printLifted reassigned
 
+printfn "\n=== Signing a Provenance Record ==="
+printfn "Signed Provenance: %A" p1Signed

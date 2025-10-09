@@ -3,7 +3,11 @@ namespace CivicAlgebraicInfrastructure.Foundations.Primitives
 open System
 
 /// Provenance record
-type Provenance = { SourceName: string; Step: int }
+type Provenance = 
+    { SourceName: string; // Clear, human-readable name of the origin (e.g., "SensorA", "UserInput", "Socrotes").
+      Step: int;
+      Timestamp: DateTime option;
+      Note: string } 
 
 /// Cell that always carries a payload and optional provenance
 type LiftedCell<'T> = { Value: 'T; Provenance: Provenance option }
@@ -13,6 +17,19 @@ type Lifted<'A,'B> =
     | A of LiftedCell<'A>
     | B of LiftedCell<'B>
     | Nested of LiftedCell<Lifted<'A,'B>>
+
+module Provenance =
+    let empty : Provenance =
+        { SourceName = ""
+          Step = 0
+          Timestamp = None
+          Note = "" }
+
+    let isEmpty (p: Provenance) =
+        p.SourceName = "" && p.Note = "" && p.Timestamp.IsNone && p.Step = 0
+
+    let describe (p: Provenance) =
+        $"Step {p.Step} from {p.SourceName} — {p.Note}"
 
 module Lifted =
 
