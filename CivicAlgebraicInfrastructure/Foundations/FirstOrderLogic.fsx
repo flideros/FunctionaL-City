@@ -1,7 +1,6 @@
 #load "FirstOrderLogic.fs"
 
 open CivicAlgebraicInfrastructure.Foundations.FOL
-open DomainModel
 open Connectives
 
 // --- Sample Terms ---

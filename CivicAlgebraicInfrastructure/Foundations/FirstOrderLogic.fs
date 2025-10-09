@@ -1,78 +1,76 @@
 namespace CivicAlgebraicInfrastructure.Foundations.FOL
 
-module DomainModel =
-    // Terms
-    type Term<'Symbol> =
-        | Var of 'Symbol
-        | Constant of 'Symbol
-        | Func of 'Symbol * Term<'Symbol> list
+open System
 
-    // Quantifiers
-    type Quantifier<'Symbol> =
-        | ForAll of 'Symbol    // Universal Quantifier: ∀x. φ
-        | Exists of 'Symbol    // Existential Quantifier: ∃x. φ
+// Terms
+type Term<'Symbol> =
+    | Var of 'Symbol
+    | Constant of 'Symbol
+    | Func of 'Symbol * Term<'Symbol> list
 
-    // Mutually recursive block
-    type AtomicFormula<'Symbol> =
-        | Predicate of 'Symbol * Term<'Symbol> list   // P(t₁, ..., tₙ)
-        | Equality of Term<'Symbol> * Term<'Symbol>   // t₁ = t₂
+// Quantifiers
+type Quantifier<'Symbol> =
+    | ForAll of 'Symbol    // Universal Quantifier: ∀x. φ
+    | Exists of 'Symbol    // Existential Quantifier: ∃x. φ
 
-    and Formula<'Symbol> =
-        | Atomic of AtomicFormula<'Symbol>
-        | Connective of PrimitiveConnective<'Symbol>
-        | Quantified of Quantified<'Symbol>
+// Mutually recursive block
+type AtomicFormula<'Symbol> =
+    | Predicate of 'Symbol * Term<'Symbol> list   // P(t₁, ..., tₙ)
+    | Equality of Term<'Symbol> * Term<'Symbol>   // t₁ = t₂
 
-    and PrimitiveConnective<'Symbol> =
-        | Not_ of Formula<'Symbol>                         // Negation: ¬φ
-        | And_ of Formula<'Symbol> * Formula<'Symbol>      // Conjunction: φ ∧ ψ
-        | Or_ of Formula<'Symbol> * Formula<'Symbol>       // Disjunction: φ ∨ ψ
-        | Implies_ of Formula<'Symbol> * Formula<'Symbol>  // Implication: φ → ψ
+and Formula<'Symbol> =
+    | Atomic of AtomicFormula<'Symbol>
+    | Connective of PrimitiveConnective<'Symbol>
+    | Quantified of Quantified<'Symbol>
 
-    and Quantified<'Symbol> =
-        { Bound : Quantifier<'Symbol>
-          Body  : Formula<'Symbol> }
+and PrimitiveConnective<'Symbol> =
+    | Not_ of Formula<'Symbol>                         // Negation: ¬φ
+    | And_ of Formula<'Symbol> * Formula<'Symbol>      // Conjunction: φ ∧ ψ
+    | Or_ of Formula<'Symbol> * Formula<'Symbol>       // Disjunction: φ ∨ ψ
+    | Implies_ of Formula<'Symbol> * Formula<'Symbol>  // Implication: φ → ψ
 
-    type ConnectiveKind = //Added 'Kind' to avoid naming collisions down stream.
-        | Not
-        | And
-        | Or
-        | Implies
-        | Iff
-        | Xor
-        | Xnor
-        | Nor
-        | Nand
-        | Converse
-        | ConverseNonImplication
-        | NonImplication
-        | Nonequivalence
+and Quantified<'Symbol> =
+    { Bound : Quantifier<'Symbol>
+      Body  : Formula<'Symbol> }
 
-    type Decidability =
-        | Decidable
-        | SemiDecidable
-        | Undecidable
+type ConnectiveKind = //Added 'Kind' to avoid naming collisions down stream.
+    | Not
+    | Implies
+    | Iff
+    | Xor
+    | Xnor
+    | Nor
+    | Nand
+    | Converse
+    | ConverseNonImplication
+    | NonImplication
+    | Nonequivalence
 
-    type Enumerability =
-        | Enumerable
-        | NonEnumerable
-    
-    type FOLMetadata =
-        { Decidability : Decidability option
-          Enumerability: Enumerability option }
+type Decidability =
+    | Decidable
+    | SemiDecidable
+    | Undecidable
 
-    type SymbolKind =
-        | VariableKind
-        | ConstantKind
-        | FunctionKind
-        | PredicateKind
+type Enumerability =
+    | Enumerable
+    | NonEnumerable
 
-    type Symbol =
-        { Name  : string
-          Kind  : SymbolKind
-          Arity : int option }   // only meaningful for functions/predicates
+type FOLMetadata =
+    { Decidability : Decidability option
+      Enumerability: Enumerability option }
 
-module Connectives=
-    open DomainModel    
+type SymbolKind =
+    | VariableKind
+    | ConstantKind
+    | FunctionKind
+    | PredicateKind
+
+type Symbol =
+    { Name  : string
+      Kind  : SymbolKind
+      Arity : int option }   // only meaningful for functions/predicates
+
+module Connectives =
     /// All unary connectives have the form:
     /// (φ: Formula<'Symbol>) : Formula<'Symbol>
     /// All binary connectives have the form:

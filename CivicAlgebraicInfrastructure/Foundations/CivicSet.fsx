@@ -1,8 +1,8 @@
 #load "FirstOrderLogic.fs"
 #load "CivicSet.fs"
 
-open CivicAlgebraicInfrastructure.Foundations.FOL.DomainModel
-open CivicAlgebraicInfrastructure.Foundations.CivicSet.DomainModel
+open CivicAlgebraicInfrastructure.Foundations.FOL
+open CivicAlgebraicInfrastructure.Foundations.CivicSet
 open CivicAlgebraicInfrastructure.Foundations.CivicSet.Operations
 
 // -----------------------------
