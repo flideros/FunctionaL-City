@@ -27,7 +27,8 @@ Every ordinance in this district is designed to be:
 ### 1. Foundations
 - **Folder:** [`Foundations/`](Foundations/)  
 - **Scope:** Core ordinance books for logic and algebra.  
-- **Current Ordinances:**  
+- **Current Ordinances:**
+  - [Primitives](Foundations/Primitives.md) — small, composable types and helpers that express core domain invariants as legal, narratable artifacts 
   - [First Order Logic (FOL)](Foundations/FirstOrderLogic.md) — defines terms, formulas, connectives, and quantifiers.  
   - [Civic Set](Foundations/CivicSet.md) — defines lawful set membership, civic-native extensionality, and signage-style comprehension.
 ---
@@ -43,6 +44,9 @@ Each ordinance book in this district includes:
 ## Crosslinks
 *City Limits*
 - [🏛️ FunctionaL City — City Hall](../README.md)
+
+*Primitives ordinance book.*
+- [📘 Foundations/Primitives.md](Foundations/Primitives.md)
 
 *First Order Logic ordinance book.*
 - [📘 Foundations/FirstOrderLogic.md](Foundations/FirstOrderLogic.md)
