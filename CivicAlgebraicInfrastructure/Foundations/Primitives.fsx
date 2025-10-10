@@ -113,5 +113,8 @@ let reassigned : Lifted<string, int> = reassignProvenance { Provenance.empty wit
 printLifted nested
 printLifted reassigned
 
+// === Signing a Provenance Record ===
+// Sign a provenance with a timestamp and note then describe it.
 printfn "\n=== Signing a Provenance Record ==="
 printfn "Signed Provenance: %A" p1Signed
+printfn "%A" (Provenance.describe p1Signed)

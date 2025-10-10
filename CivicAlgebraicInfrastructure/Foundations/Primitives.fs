@@ -29,7 +29,9 @@ module Provenance =
         p.SourceName = "" && p.Note = "" && p.Timestamp.IsNone && p.Step = 0
 
     let describe (p: Provenance) =
-        $"Step {p.Step} from {p.SourceName} — {p.Note}"
+        match p.Timestamp with
+        | None -> $"Step {p.Step} from {p.SourceName} — {p.Note}"
+        | Some _ -> $"Step {p.Step} from {p.SourceName} on {p.Timestamp.Value} — {p.Note}"
 
 module Lifted =
 

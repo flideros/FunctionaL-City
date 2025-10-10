@@ -1,5 +1,6 @@
 namespace CivicAlgebraicInfrastructure.Foundations.CivicSet
 
+open CivicAlgebraicInfrastructure.Foundations.Primitives
 open CivicAlgebraicInfrastructure.Foundations.FOL
 
 type Cardinality =
@@ -25,7 +26,7 @@ type SetTheoreticMetadata =
 type CivicSetMetadataItem =
     | SetTheoretic of SetTheoreticMetadata
     | FOL of FOLMetadata
-    | Provenance of string      // e.g. "Defined in ZFC", "Derived from Peano axioms"
+    | Provenance of Provenance  // e.g. "Defined in ZFC", "Derived from Peano axioms"
     | Tag of string             // free-form civic signage
     | Note of string
     | Custom of string * string // extension point

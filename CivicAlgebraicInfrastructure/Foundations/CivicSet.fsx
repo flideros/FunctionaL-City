@@ -1,6 +1,9 @@
+#load "Primitives.fs"
 #load "FirstOrderLogic.fs"
 #load "CivicSet.fs"
 
+open System
+open CivicAlgebraicInfrastructure.Foundations.Primitives
 open CivicAlgebraicInfrastructure.Foundations.FOL
 open CivicAlgebraicInfrastructure.Foundations.CivicSet
 open CivicAlgebraicInfrastructure.Foundations.CivicSet.Operations
@@ -16,6 +19,12 @@ let zeroSym = { Name = "0"; Kind = ConstantKind; Arity = None}
 let natFormula : Formula<Symbol> =
     Atomic (Predicate (geq, [ Var xSym; Constant zeroSym ]))
 
+let natProvenance : Provenance =
+    { SourceName = "ZFC + Peano Axioms"
+      Step = 1
+      Timestamp = Some(DateTime(1930, 1, 1))
+      Note = "Declared ℕ as the set of natural numbers ≥ 0, formalized in ZFC and derived from Peano axioms." }
+
 let naturalNumbers =
     { new ICivicSet<int,Symbol> with
         member _.Symbol       = Some "\u2115"   // ℕ
@@ -25,10 +34,19 @@ let naturalNumbers =
         member _.Compare      = Some compare
         member _.Min          = Some 0
         member _.Max          = None
-        member _.Metadata     =
+        member _.Metadata     = 
             [ SetTheoretic { Cardinality  = Some Aleph0
                              Countability = Some Countable
-                             OrderType    = Some TotalOrder } ]
+                             OrderType    = Some TotalOrder };
+              Provenance natProvenance;
+              Note """ℕ, the set of natural numbers ≥ 0, originates from Giuseppe Peano's 1889 axioms, 
+which defined arithmetic using successor functions and induction. These axioms laid the 
+foundation for formal number theory. In the early 20th century, Ernst Zermelo introduced 
+axioms for set theory (1908), later extended by Abraham Fraenkel and others to form ZFC. 
+Within this framework, ℕ was reconstructed as a set-theoretic object using the von Neumann 
+ordinal construction, where each natural number is defined as the set of all smaller 
+natural numbers. This civic declaration reflects that lineage: ℕ is countable, totally ordered, 
+and formally grounded in ZFC + Peano arithmetic.""" ]
         member _.IsClosedUnder _ = true
         member _.Implies _       = false
         member _.EquivalentTo _  = false }
@@ -43,20 +61,30 @@ let intVar  = { Name = "x"; Kind = VariableKind; Arity = None }
 let intFormula : Formula<Symbol> =
     Atomic (Predicate (intPred, [ Var intVar ]))
 
+let intProvenance : Provenance =
+    { SourceName = "ZFC + Integer Construction"
+      Step = 2
+      Timestamp = Some(DateTime(1930, 1, 1))
+      Note = "Declared ℤ as the set of integers, constructed from ℕ using equivalence classes of ordered pairs." }
+
 let integers =
     { new ICivicSet<int,Symbol> with
         member _.Symbol       = Some "\u2124"   // ℤ
         member _.Formula      = Some intFormula
         member _.Contains _   = true
-        member _.Elements     =
-            Seq.initInfinite (fun n -> if n % 2 = 0 then n/2 else -(n/2 + 1))
+        member _.Elements     = Seq.initInfinite (fun n -> if n % 2 = 0 then n/2 else -(n/2 + 1))
         member _.Compare      = Some compare
         member _.Min          = None
         member _.Max          = None
         member _.Metadata     =
             [ SetTheoretic { Cardinality  = Some Aleph0
                              Countability = Some Countable
-                             OrderType    = Some TotalOrder } ]
+                             OrderType    = Some TotalOrder };
+              Provenance intProvenance; 
+              Note """ℤ, the set of integers, extends ℕ by introducing additive inverses. It is constructed using 
+equivalence classes of ordered pairs of natural numbers: (a, b) represents the integer a − b. 
+This construction, formalized within ZFC, preserves total order and countability. ℤ includes zero, 
+positive naturals, and their negatives, forming a foundational ring for arithmetic and algebra.""" ]
         member _.IsClosedUnder _ = true
         member _.Implies _       = false
         member _.EquivalentTo _  = false }
@@ -101,6 +129,12 @@ let qSym    = { Name = "q"; Kind = VariableKind; Arity = None }
 let rationalFormula : Formula<Symbol> =
     Atomic (Predicate (ratPred, [ Var pSym; Var qSym ]))
 
+let ratProvenance : Provenance =
+    { SourceName = "ZFC + Rational Construction"
+      Step = 3
+      Timestamp = Some(DateTime(1930, 1, 1))
+      Note = "Declared ℚ as the set of rational numbers, constructed from ℤ using equivalence classes of integer pairs." }
+
 let rationals =
     { new ICivicSet<Rational,Symbol> with
         member _.Symbol       = Some "\u211A"   // ℚ
@@ -113,7 +147,13 @@ let rationals =
         member _.Metadata     =
             [ SetTheoretic { Cardinality  = Some Aleph0
                              Countability = Some Countable
-                             OrderType    = None } ]
+                             OrderType    = None };
+              Provenance ratProvenance; 
+              Note """ℚ, the set of rational numbers, is constructed from ℤ using equivalence classes of 
+ordered pairs (a, b) where b ≠ 0. Each pair represents the fraction a/b, with equivalence 
+defined by cross-multiplication. This construction, formalized in ZFC, yields a countable, 
+totally ordered field. ℚ supports addition, multiplication, and inversion (except for zero), 
+forming the backbone of ratio-based arithmetic.""" ]
         member _.IsClosedUnder _ = true
         member _.Implies _       = false
         member _.EquivalentTo _  = false }
@@ -135,6 +175,12 @@ let realFormulaFOL : Formula<Symbol> =
             Atomic (Predicate (realSymbol, [xVar]))
     }
 
+let realProvenance : Provenance =
+    { SourceName = "ZFC + Dedekind/Completeness Axioms"
+      Step = 4
+      Timestamp = Some(DateTime(1930, 1, 1))
+      Note = "Declared ℝ as the set of real numbers, constructed via Dedekind cuts or Cauchy sequences over ℚ." }
+
 let reals =
     { new ICivicSet<float, Symbol> with
         member _.Symbol       = Some "\u211D"   // ℝ
@@ -147,7 +193,13 @@ let reals =
         member _.Metadata     =
             [ SetTheoretic { Cardinality  = Some Continuum
                              Countability = Some Uncountable
-                             OrderType    = Some TotalOrder } ]
+                             OrderType    = Some TotalOrder };
+              Provenance realProvenance;
+              Note """ℝ, the set of real numbers, extends ℚ to include limits of convergent sequences and irrational quantities. 
+It can be constructed via Dedekind cuts—partitions of ℚ—or equivalence classes of Cauchy sequences. 
+Formalized within ZFC, ℝ is uncountable and totally ordered, satisfying the completeness axiom: 
+every bounded set has a least upper bound. ℝ underpins analysis, calculus, and continuous modeling 
+in civic infrastructure.""" ]
         member _.IsClosedUnder _ = true
         member _.Implies _       = false
         member _.EquivalentTo _  = false }
@@ -196,38 +248,87 @@ let complex =
 
 printfn "ℕ contains 5? %b" (naturalNumbers.Contains 5)
 printfn "ℕ contains -3? %b" (naturalNumbers.Contains -3)
-printfn "First 10 ℕ: %A" (naturalNumbers.Elements |> Seq.take 10 |> Seq.toList)
+printfn "First 10 ℕ: %A" (naturalNumbers.Elements |> Seq.take 5 |> Seq.toList)
 printfn "ℕ formula: %A" naturalNumbers.Formula
 
-printfn "ℤ sample: %A" (integers.Elements |> Seq.take 10 |> Seq.toList)
+printfn "ℤ sample: %A" (integers.Elements |> Seq.take 5 |> Seq.toList)
 
-printfn "ℚ sample first 20 rationals (diagonal): %A" (rationals.Elements |> Seq.take 20 |> Seq.toList)
+printfn "ℚ sample first 20 rationals (diagonal): %A" (rationals.Elements |> Seq.take 5 |> Seq.toList)
 
 printfn "ℝ formula: %A" reals.Formula
-printfn "ℝ sample: %A" (reals.Elements |> Seq.take 10 |> Seq.toList)
+printfn "ℝ sample: %A" (reals.Elements |> Seq.take 5 |> Seq.toList)
 
 printfn "ℂ formula: %A" complex.Formula
-printfn "ℂ sample: %A" (complex.Elements |> Seq.take 10 |> Seq.toList)
+printfn "ℂ sample: %A" (complex.Elements |> Seq.take 5 |> Seq.toList)
 
-(*
-type SimpleSet(elements: seq<int>) =
-    interface ICivicSet<int, string> with
-        member _.Symbol = Some "SimpleSet"
-        member _.Formula = None
-        member _.Contains x = elements |> Seq.contains x
-        member _.Elements = elements
-        member _.Compare = Some compare
-        member _.Min = elements |> Seq.min |> Some
-        member _.Max = elements |> Seq.max |> Some
-        member _.Metadata = [Tag "Test Set"]
-        member _.IsClosedUnder _ = true
-        member _.Implies _ = false
-        member _.EquivalentTo _ = false
+/// Try to extract the first Note from metadata
+let tryGetNote (metadata: CivicSetMetadataItem list) : string option =
+    metadata
+    |> List.choose (function Note text -> Some text | _ -> None)
+    |> List.tryHead
 
-let a = SimpleSet([1; 2; 3]) :> ICivicSet<int, string>
-let b = SimpleSet([1; 2; 3; 4; 5]) :> ICivicSet<int, string>
-let c = SimpleSet([2; 3]) :> ICivicSet<int, string>
+/// Display the note if available
+let displayNote (metadata: CivicSetMetadataItem list) =
+    match tryGetNote metadata with
+    | Some note -> printfn "🪧 CivicSet Note:\n%s" note
+    | None -> printfn "No civic note found in metadata."
 
-let test1 = isSubsetOf a b // true
-let test2 = isSubsetOf c a // true
-let test3 = isSubsetOf b a // false*)
+displayNote integers.Metadata
+
+/// Generate a civic inspector report for a given CivicSet
+let civicSetInspectorReport (set: ICivicSet<'C,'S>) : string =
+    let symbol     = set.Symbol |> Option.defaultValue "∅"
+    let formulaStr = 
+        match box set.Formula with
+        | :? Option<Formula<Symbol>> as fOpt ->
+            fOpt
+            |> Option.map FormulaPrinter.formulaToString
+            |> Option.defaultValue "—"
+        | _ -> "—"
+    let cardinality, countability, orderType =
+        set.Metadata
+        |> List.choose (function SetTheoretic m -> Some m | _ -> None)
+        |> List.tryHead
+        |> Option.map (fun m -> m.Cardinality, m.Countability, m.OrderType)
+        |> Option.defaultValue (None, None, None)
+
+    let provenance =
+        set.Metadata
+        |> List.choose (function Provenance p -> Some p | _ -> None)
+        |> List.tryHead
+        |> Option.map Provenance.describe
+        |> Option.defaultValue "No provenance record found."
+
+    let note =
+        set.Metadata
+        |> List.choose (function Note n -> Some n | _ -> None)
+        |> List.tryHead
+        |> Option.defaultValue "No civic signage note found."
+
+    let minStr = set.Min |> Option.map string |> Option.defaultValue "—"
+    let maxStr = set.Max |> Option.map string |> Option.defaultValue "—"
+    let countabilityStr = countability |> Option.map string |> Option.defaultValue "—"
+    let cardinalityStr  = cardinality |> Option.map string |> Option.defaultValue "—"
+    let orderStr        = orderType |> Option.map string |> Option.defaultValue "—"
+
+    $"""
+🧾 CivicSet Inspector Report
+────────────────────────────
+🪧 Symbol: {symbol}
+📐 Formula: {formulaStr}
+
+📊 Set-Theoretic Metadata:
+   • Cardinality: {cardinalityStr}
+   • Countability: {countabilityStr}
+   • Order Type: {orderStr}
+
+🔍 Min: {minStr}
+🔍 Max: {maxStr}
+
+🧭 Provenance:
+   {provenance}
+
+📝 Civic Note:
+{note}
+"""
+printfn "%s" (civicSetInspectorReport naturalNumbers)

@@ -70,6 +70,43 @@ type Symbol =
       Kind  : SymbolKind
       Arity : int option }   // only meaningful for functions/predicates
 
+module FormulaPrinter =
+
+    let rec termToString (term: Term<Symbol>) : string =
+        match term with
+        | Var s -> s.Name
+        | Constant s -> s.Name
+        | Func (f, args) ->
+            let argsStr = args |> List.map termToString |> String.concat ", "
+            $"{f.Name}({argsStr})"
+
+    let atomicToString (atom: AtomicFormula<Symbol>) : string =
+        match atom with
+        | Predicate (p, args) ->
+            match args with
+            | [a; b] when p.Name = "≥" || p.Name = "=" || p.Name = "<" || p.Name = "≤" || p.Name = ">" || p.Name = "≠" ->
+                $"{termToString a} {p.Name} {termToString b}"
+            | _ ->
+                let argsStr = args |> List.map termToString |> String.concat ", "
+                $"{p.Name}({argsStr})"
+        | Equality (t1, t2) -> $"{termToString t1} = {termToString t2}"
+
+    let rec formulaToString (f: Formula<Symbol>) : string =
+        match f with
+        | Atomic atom -> atomicToString atom
+        | Connective conn ->
+            match conn with
+            | Not_ φ -> $"¬({formulaToString φ})"
+            | And_ (φ, ψ) -> $"({formulaToString φ} ∧ {formulaToString ψ})"
+            | Or_ (φ, ψ) -> $"({formulaToString φ} ∨ {formulaToString ψ})"
+            | Implies_ (φ, ψ) -> $"({formulaToString φ} → {formulaToString ψ})"
+        | Quantified q ->
+            let quantifierStr =
+                match q.Bound with
+                | ForAll s -> $"∀{s.Name}"
+                | Exists s -> $"∃{s.Name}"
+            $"{quantifierStr}.({formulaToString q.Body})"
+
 module Connectives =
     /// All unary connectives have the form:
     /// (φ: Formula<'Symbol>) : Formula<'Symbol>
