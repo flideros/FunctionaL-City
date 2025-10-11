@@ -4,14 +4,26 @@ open CivicAlgebraicInfrastructure.Foundations.FOL
 open Connectives
 
 // --- Sample Terms ---
-let x = Var "x"
-let y = Var "y"
-let c = Constant "c"
-let fxy = Func("f", [x; y])
+let x = Var { Name  = "x";
+                            Kind  = VariableKind;
+                            Arity = None } 
+let y = Var { Name  = "y";
+                            Kind  = VariableKind;
+                            Arity = None }
+let c = Constant { Name  = "c";
+                                  Kind  = ConstantKind;
+                                  Arity = None }
+let fxy = Func ({ Name  = "f";
+                                Kind  = FunctionKind;
+                                Arity = None },[x;y])
 
 // --- Atomic Formulas ---
-let p = Atomic (Predicate ("P", [x; c]))
-let q = Atomic (Predicate ("Q", [y]))
+let p = Atomic (Predicate ({ Name  = "P";
+                                               Kind  = FunctionKind;
+                                               Arity = None }, [x; c]))
+let q = Atomic (Predicate ({ Name  = "Q";
+                                              Kind  = FunctionKind;
+                                              Arity = None }, [y]))
 let eq = Atomic (Equality (x, c))
 
 // --- Primitive Connectives ---
@@ -21,8 +33,12 @@ let impl = Connective (Implies_ (p, q))      // P(x,c) → Q(y)
 let neg  = Connective (Not_ p)               // ¬P(x,c)
 
 // --- Quantified Formulas ---
-let forallx = Quantified { Bound = ForAll "x"; Body = p }   // ∀x. P(x,c)
-let existsy = Quantified { Bound = Exists "y"; Body = q }   // ∃y. Q(y)
+let forallx = Quantified { Bound = ForAll { Name  = "x";
+                                             Kind  = VariableKind;
+                                             Arity = None }; Body = p }   // ∀x. P(x,c)
+let existsy = Quantified { Bound = Exists { Name  = "y";
+                                             Kind  = VariableKind;
+                                             Arity = None }; Body = q }   // ∃y. Q(y)
 
 // --- Derived Connectives ---
 let bicond = iff p q                        // P(x,c) ↔ Q(y)
@@ -36,18 +52,19 @@ let convNonimpl = converseNonimplication p q// Q(y) ∧ ¬P(x,c)
 let nonequiv = nonequivalence p q           // ¬(P(x,c) ↔ Q(y))
 
 // --- Print results (raw union cases for now) ---
-printfn "Conjunction: %A" conj
-printfn "Disjunction: %A" disj
-printfn "Implication: %A" impl
-printfn "Negation: %A" neg
-printfn "ForAll: %A" forallx
-printfn "Exists: %A" existsy
-printfn "Biconditional: %A" bicond
-printfn "XOR: %A" exclusive
-printfn "NAND: %A" nandEx
-printfn "NOR: %A" norEx
-printfn "XNOR: %A" xnorEx
-printfn "Nonimplication: %A" nonimpl
-printfn "Converse: %A" conv
-printfn "Converse Nonimplication: %A" convNonimpl
-printfn "Nonequivalence: %A" nonequiv
+printfn "Conjunction: %A" (FormulaPrinter.formulaToString conj)
+printfn "Disjunction: %A" (FormulaPrinter.formulaToString disj)
+printfn "Implication: %A" (FormulaPrinter.formulaToString impl)
+printfn "Negation: %A" (FormulaPrinter.formulaToString neg)
+printfn "ForAll: %A" (FormulaPrinter.formulaToString forallx)
+printfn "Exists: %A" (FormulaPrinter.formulaToString existsy)
+printfn "Biconditional: %A" (FormulaPrinter.formulaToString bicond)
+printfn "XOR: %A" (FormulaPrinter.formulaToString exclusive)
+printfn "NAND: %A" (FormulaPrinter.formulaToString nandEx)
+printfn "NOR: %A" (FormulaPrinter.formulaToString norEx)
+printfn "XNOR: %A" (FormulaPrinter.formulaToString xnorEx)
+printfn "Nonimplication: %A" (FormulaPrinter.formulaToString nonimpl)
+printfn "Converse: %A" (FormulaPrinter.formulaToString conv)
+printfn "Converse Nonimplication: %A" (FormulaPrinter.formulaToString convNonimpl)
+printfn "Nonequivalence: %A" (FormulaPrinter.formulaToString nonequiv)
+
