@@ -31,7 +31,7 @@ Let this blog be the first of many mayoral dispatches. The city is alive. The ch
 
 ## 📬 Future *Message from the Mayor* Dispatches
 
-Kepp an eye out for future editions of *Message fron the Mayor* as the city grows and random musings come across develop along the way. In the meantime, ane eye on the BlogDistrict [**README.md**](../README.md) for updates.
+Keep an eye out for future editions of *Message fron the Mayor* as the city grows and random musings come across develop along the way. In the meantime, ane eye on the BlogDistrict [**README.md**](../README.md) for updates.
 
 ---
 

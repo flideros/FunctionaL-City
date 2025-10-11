@@ -60,7 +60,7 @@ The mayor’s veto wasn’t a rejection of progress—it was a call to lawful in
 
 ## 📬 Future *Message from the Mayor* Dispatches
 
-Kepp an eye out for future editions of *Message fron the Mayor* as the city grows and random musings come across develop along the way. In the meantime, ane eye on the BlogDistrict [**README.md**](../README.md) for updates.
+Keep an eye out for future editions of *Message fron the Mayor* as the city grows and random musings come across develop along the way. In the meantime, ane eye on the BlogDistrict [**README.md**](../README.md) for updates.
 
 ---
 
