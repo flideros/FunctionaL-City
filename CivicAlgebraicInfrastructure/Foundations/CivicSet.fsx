@@ -314,7 +314,7 @@ let civicSetInspectorReport (set: ICivicSet<'C,'S>) : string =
     $"""
 🧾 CivicSet Inspector Report
 ────────────────────────────
-🪧 Symbol: {symbol}
+🪧 Symbol:  {symbol}
 📐 Formula: {formulaStr}
 
 📊 Set-Theoretic Metadata:
