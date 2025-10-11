@@ -16,7 +16,7 @@ This design violated our civic charter:
 * Provenance was untraceable, and nulls roamed freely.
 
 ## 🧑‍⚖️ The Mayor’s Ruling: Types Are Citizens
-After laying out the scaffolding for the CivicSet, i quickly realized that implementing a way to represent the union of two sets would require a way to join two or more different types. This called for a union type that could represent two different types `Lifted<'A,'B>`. I submitted a preliminary design to the City Council.
+After laying out the scaffolding for the CivicSet, I quickly realized that implementing a way to represent the union of two sets would require a way to join two or more different types. This called for a union type that could represent two different types `Lifted<'A,'B>`. I submitted a preliminary design to the City Council.
 
 The city mayor issued a formal rejection:
 
@@ -32,19 +32,24 @@ Back to the drawing board. Get some Rock Star's and coffee brewing...it going to
 ## 🏗️ The New Civic Infrastructure: Lifted<'A,'B>
 Our initial design allowed the discriminated union of two generic types `'A` and `'B`. But remixers quickly discovered a recursive trap: either generic type could nest another `Lifted<'A,'B>`, requiring reflection to inspect nested payloads. This violated our ordinance against runtime guessing.
 
-The solution, we replaced reflection with a narratable union that included an explicit nested type:
+The solution, replace reflection with a narratable union that included an explicit nested type:
 ```fsharp
 type Lifted<'A,'B> =
     | A of LiftedCell<'A>
     | B of LiftedCell<'B>
     | Nested of LiftedCell<Lifted<'A,'B>>
 ```
+But first, we needed a way to attach provenance to each lifted type. For this the record `LiftedCell<'T>` was created:
+```fsharp
+/// Cell that always carries a payload and optional provenance
+type LiftedCell<'T> = { Value: 'T; Provenance: Provenance option }
+```
 Every payload is:
 * Typed: remixers know exactly what they’re handling.
-* Provenanced: every ordinance carries its lineage.
+* Provenanced: every type carries its lineage.
 * Remix-safe: no nulls, no guessing, no runtime traps.
 
-See the code in [**Primitives.fs**](../../CivicAlgebraicInfrastructure/Foundations/Primitives.fs)
+See the ordinace here [**Primitives.md**](../../CivicAlgebraicInfrastructure/Foundations/Primitives.md)
 ## 🛠️ Civic Signage: Traversal Without Surveillance
 Instead of probing, we now traverse with signage:
 
