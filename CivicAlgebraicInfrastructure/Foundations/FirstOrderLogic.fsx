@@ -68,3 +68,29 @@ printfn "Converse: %A" (FormulaPrinter.formulaToString conv)
 printfn "Converse Nonimplication: %A" (FormulaPrinter.formulaToString convNonimpl)
 printfn "Nonequivalence: %A" (FormulaPrinter.formulaToString nonequiv)
 
+let domainRestriction =
+    Formulae.domainRestrictionFormula
+        { Name = "f"; Kind = FunctionKind; Arity = Some 1 }
+        { Name = "A"; Kind = ConstantKind; Arity = None }
+        { Name = "B"; Kind = ConstantKind; Arity = None }
+
+printfn "Domain Restriction: %A" (FormulaPrinter.formulaToString domainRestriction)
+// Output: ∀x. x ∈ A → f(x) ∈ B
+
+let closure =
+    Formulae.closureFormula
+        { Name = "f"; Kind = FunctionKind; Arity = Some 1 }
+        { Name = "A"; Kind = ConstantKind; Arity = None }
+
+printfn "Closure: %A" (FormulaPrinter.formulaToString closure)
+// Output: ∀x. x ∈ A → f(x) ∈ A
+
+let setEquality =
+    Formulae.setEqualityFormula
+        { Name = "A"; Kind = ConstantKind; Arity = None }
+        { Name = "B"; Kind = ConstantKind; Arity = None }
+
+printfn "Set Equality: %A" (FormulaPrinter.formulaToString setEquality)
+// Output: ∀x. x ∈ A ↔ x ∈ B
+
+

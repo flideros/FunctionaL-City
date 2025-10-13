@@ -261,6 +261,10 @@ printfn "ℝ sample: %A" (reals.Elements |> Seq.take 5 |> Seq.toList)
 printfn "ℂ formula: %A" complex.Formula
 printfn "ℂ sample: %A" (complex.Elements |> Seq.take 5 |> Seq.toList)
 
+// ---------------------------
+// Sample reports
+// ---------------------------
+
 /// Try to extract the first Note from metadata
 let tryGetNote (metadata: CivicSetMetadataItem list) : string option =
     metadata
@@ -332,3 +336,56 @@ let civicSetInspectorReport (set: ICivicSet<'C,'S>) : string =
 {note}
 """
 printfn "%s" (civicSetInspectorReport naturalNumbers)
+
+// ---------------------------
+// Sample ICivicSet implementations for testing
+// ---------------------------
+let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
+    { new ICivicSet<int, Symbol> with
+        member _.Symbol = Some name
+        member _.Formula = None
+        member _.Contains x = List.contains x vals
+        member _.Elements = vals :> seq<int>
+        member _.Compare = Some compare
+        member _.Min = if List.isEmpty vals then None else Some (List.min vals)
+        member _.Max = if List.isEmpty vals then None else Some (List.max vals)
+        member _.Metadata = [ Tag $"SimpleSet:{name}"; Provenance { SourceName = name; Step = 1; Timestamp = Some DateTime.UtcNow; Note = "original" } ]
+        member _.IsClosedUnder _ = false
+        member _.Implies _ = false
+        member _.EquivalentTo _ = false }
+
+let setA = makeSimpleSet "Nat" [1;2;3]
+let setB = makeSimpleSet "Odds" [1;3;5]
+
+let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB
+
+// ---------------------------
+// Inspect results
+// ---------------------------
+printfn "Union symbol: %A" unionSet.Symbol
+printfn "Union metadata:"
+unionSet.Metadata |> Seq.iter (function Tag t -> printfn " Tag: %s" t | Provenance p -> printfn " Prov: %s step=%d" p.SourceName p.Step | _ -> ())
+printfn "Union elements (lifted sets):"
+for e in unionSet.Elements do
+    match e with
+    | A cell -> printfn " A -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance
+    | B cell -> printfn " B -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance
+    | Nested cell -> printfn " Nested -> %A" cell
+
+// Flatten members for demonstration
+let flattened =
+    unionSet.Elements
+    |> Seq.collect (fun lifted ->
+        match lifted with
+        | A c -> c.Value.Elements |> Seq.map Choice1Of2
+        | B c -> c.Value.Elements |> Seq.map Choice2Of2
+        | Nested _ -> Seq.empty)
+
+printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
+let liftedConcrete =
+    let collapsed = CivicSetConstructors.collapseLiftedToConcrete true true unionSet
+    match collapsed with
+    | Some x -> x.Elements 
+    | None -> []
+
+printfn "Lifted Concrete: %A" (liftedConcrete |> Seq.toList)

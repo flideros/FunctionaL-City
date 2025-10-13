@@ -70,6 +70,113 @@ type Symbol =
       Kind  : SymbolKind
       Arity : int option }   // only meaningful for functions/predicates
 
+module Formulae =
+    /// Constructs a membership predicate: x ∈ A
+    /// Represents set membership using a binary predicate symbol.
+    let memberOf (term: Term<Symbol>) (set: Term<Symbol>) : Formula<Symbol> =
+        Atomic (Predicate({ Name = "∈"; Kind = PredicateKind; Arity = Some 2 }, [term; set]))
+
+    /// Constructs a union formula: φ ∨ ψ
+    /// Represents the logical disjunction of two formulas.
+    let unionFormula (φ: Formula<Symbol>) (ψ: Formula<Symbol>) : Formula<Symbol> =
+        Connective (Or_ (φ, ψ))
+
+    /// Constructs an intersection formula: φ ∧ ψ
+    /// Represents the logical conjunction of two formulas.
+    let intersectionFormula (φ: Formula<Symbol>) (ψ: Formula<Symbol>) : Formula<Symbol> =
+        Connective (And_ (φ, ψ))
+    
+    /// Constructs an implication formula: φ → ψ
+    /// Represents logical implication from φ to ψ.
+    let impliesFormula (φ: Formula<Symbol>) (ψ: Formula<Symbol>) : Formula<Symbol> =
+        Connective (Implies_ (φ, ψ))
+
+    /// Constructs a complement formula: ¬φ
+    /// Represents the logical negation of a formula.
+    let complementFormula (φ: Formula<Symbol>) : Formula<Symbol> =
+        Connective (Not_ φ)
+
+    /// Constructs a domain restriction formula: ∀x ∈ A. f(x) ∈ B
+    /// Ensures that function f maps elements from domain A into codomain B.
+    /// Useful for modeling partial functions, dispatch zones, and algebraic mappings.
+    let domainRestrictionFormula (f: Symbol) (domain: Symbol) (codomain: Symbol) : Formula<Symbol> =
+        let x = { Name = "x"; Kind = VariableKind; Arity = None }
+        let fx = Func(f, [Var x])
+        let inSet s t = Predicate({ Name = "∈"; Kind = PredicateKind; Arity = Some 2 }, [t; Constant s])
+        Quantified {
+            Bound = ForAll x
+            Body = Connective (Implies_ (Atomic (inSet domain (Var x)), Atomic (inSet codomain fx)))
+        }
+
+    /// Constructs a closure formula: ∀x ∈ A. f(x) ∈ A
+    /// Ensures that function f preserves membership within set A.
+    /// Useful for modeling closure under operations, algebraic structures, and civic invariants
+    let closureFormula (f: Symbol) (set: Symbol) : Formula<Symbol> =
+        domainRestrictionFormula f set set
+
+    /// Constructs a set equality formula: ∀x. x ∈ A ↔ x ∈ B
+    /// Asserts that sets A and B contain exactly the same elements.
+    /// Useful for symbolic equivalence, civic audits, and remix-safe comparisons.
+    let setEqualityFormula (a: Symbol) (b: Symbol) : Formula<Symbol> =
+        let x = { Name = "x"; Kind = VariableKind; Arity = None }
+        let inSet s t = Predicate({ Name = "∈"; Kind = PredicateKind; Arity = Some 2 }, [t; Constant s])
+        Quantified {
+            Bound = ForAll x
+            Body = Connective (And_ (
+                Connective (Implies_ (Atomic (inSet a (Var x)), Atomic (inSet b (Var x)))),
+                Connective (Implies_ (Atomic (inSet b (Var x)), Atomic (inSet a (Var x))))
+            ))
+        }
+
+    /// Attempts to construct a union formula if 'S is Symbol.
+    /// Returns Some formula if successful, otherwise None.
+    /// Remixers can pipe None to their own symbolic signage logic.
+    let tryUnion<'S> (fa: Formula<'S>) (fb: Formula<'S>) : Formula<'S> option =
+        if typeof<'S> = typeof<Symbol> then
+            let fa' = unbox<Formula<Symbol>> (box fa)
+            let fb' = unbox<Formula<Symbol>> (box fb)
+            let result = unionFormula fa' fb'
+            Some (box result :?> Formula<'S>)
+        else None
+
+    /// Attempts to construct an intersection formula if 'S is Symbol.
+    /// Returns Some formula if successful, otherwise None.
+    /// Remixers can extend this for other symbolic types.
+    let tryIntersection<'S> (fa: Formula<'S>) (fb: Formula<'S>) : Formula<'S> option =
+        if typeof<'S> = typeof<Symbol> then
+            let fa' = unbox<Formula<Symbol>> (box fa)
+            let fb' = unbox<Formula<Symbol>> (box fb)
+            let result = intersectionFormula fa' fb'
+            Some (box result :?> Formula<'S>)
+        else None
+
+    /// Attempts to construct a complement formula if 'S is Symbol.
+    /// Returns Some formula if successful, otherwise None.
+    /// Remixers can override this for custom signage dialects.
+    let tryComplement<'S> (fa: Formula<'S>) : Formula<'S> option =
+        if typeof<'S> = typeof<Symbol> then
+            let fa' = unbox<Formula<Symbol>> (box fa)
+            let result = complementFormula fa'
+            Some (box result :?> Formula<'S>)
+        else None
+
+    /// Synthesizes a quantified membership predicate ∀x. x ∈ A for a Symbol constant
+    let memberPredicateForSymbol (setSym: Symbol) : Formula<Symbol> =
+        let x = { Name = "x"; Kind = VariableKind; Arity = None }
+        let inSet s t = Predicate({ Name = "∈"; Kind = PredicateKind; Arity = Some 2 }, [t; Constant s])
+        Quantified { Bound = ForAll x; Body = Atomic (inSet setSym (Var x)) }
+
+    /// Build a union formula from available formulas or symbols
+    let unionFromOptions (faOpt: Formula<Symbol> option) (saOpt: Symbol option)
+                        (fbOpt: Formula<Symbol> option) (sbOpt: Symbol option)
+                        : Formula<Symbol> option =
+        match faOpt, saOpt, fbOpt, sbOpt with
+        | Some fa, _, Some fb, _ -> Some (unionFormula fa fb)
+        | Some fa, _, None, Some sb -> Some (unionFormula fa (memberPredicateForSymbol sb))
+        | None, Some sa, Some fb, _ -> Some (unionFormula (memberPredicateForSymbol sa) fb)
+        | None, Some sa, None, Some sb -> Some (unionFormula (memberPredicateForSymbol sa) (memberPredicateForSymbol sb))
+        | _ -> None
+
 module FormulaPrinter =
 
     let rec termToString (term: Term<Symbol>) : string =
