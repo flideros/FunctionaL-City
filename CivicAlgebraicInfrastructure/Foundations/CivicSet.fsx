@@ -382,10 +382,10 @@ let flattened =
         | Nested _ -> Seq.empty)
 
 printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
-let liftedConcrete =
+let CollapsedToConcrete =
     let collapsed = CivicSetConstructors.collapseLiftedToConcrete true true unionSet
     match collapsed with
     | Some x -> x.Elements 
     | None -> []
 
-printfn "Lifted Concrete: %A" (liftedConcrete |> Seq.toList)
+printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
