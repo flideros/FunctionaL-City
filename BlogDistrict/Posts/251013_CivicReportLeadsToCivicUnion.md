@@ -94,7 +94,7 @@ With the inspector report scaffolding symbolic lineage and the union constructor
 
 * **Provenance Bridges**: Linking symbolic declarations (`SetProvenance`) with runtime traceability (`Provenance`).
 
-Now that we have proof of concept, it's time to take the `CivicSet` from 35% to 65% design completion. To get there will require some work. I will need to go back through the code and refactor and document what is there before moving on to coding the rest of the modules in the `CivicSet` namespace. Please be aware as `Foundations` is still a construction zone.
+Now that we have proof of concept, it's time to take the `CivicSet` from 35% to 65% design completion. To get there will require some work. I will need to go back through the code and refactor and document what is there before moving on to coding the rest of the modules in the `CivicSet` namespace. Please be aware as `Foundations` is still a construction zone. You can find the code [**here**](../../CivicAlgebraicInfrastructure/Foundations/CivicSet.fsx)
 
 ## 📬 Future *Message from the Mayor* Dispatches
 
