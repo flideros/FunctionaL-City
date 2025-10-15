@@ -2,7 +2,7 @@
 
 Welcome to **FunctionaL City**—a narratable community of code and random musings where every project is a district, every module an ordinance, and every interface a civic event. This README serves as your **City Charter**, guiding remixers, engineers, and citizens through the founding principles, parcel maps, and symbolic ordinances of the city. 
 
-Visit the Github Pages site [FunctionaL City](https://flideros.github.io/FunctionaL-City/) or if you're at the site, visit the [GitHub Repository.](https://github.com/flideros/FunctionaL-City)
+Visit the Github Pages site [FunctionaL City](https://flideros.github.io/FunctionaL-City/) or if you're at the site, visit the [GitHub Repository.](https://github.com/flideros/FunctionaL-City/)
  
 
 ---
