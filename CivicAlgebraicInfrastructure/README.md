@@ -31,6 +31,7 @@ Every ordinance in this district is designed to be:
   - [Primitives](Foundations/Primitives.md) — small, composable types and helpers that express core domain invariants as legal, narratable artifacts 
   - [First Order Logic (FOL)](Foundations/FirstOrderLogic.md) — defines terms, formulas, connectives, and quantifiers.  
   - [Civic Set](Foundations/CivicSet.md) — defines lawful set membership, civic-native extensionality, and signage-style comprehension.
+  
 ---
 
 ## Companion Ordinances
