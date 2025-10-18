@@ -23,7 +23,8 @@ let natProvenance : Provenance =
     { SourceName = "ZFC + Peano Axioms"
       Step = 1
       Timestamp = Some(DateTime(1930, 1, 1))
-      Note = "Declared ℕ as the set of natural numbers ≥ 0, formalized in ZFC and derived from Peano axioms." }
+      Note = "Declared ℕ as the set of natural numbers ≥ 0, formalized in ZFC and derived from Peano axioms." 
+      Lineage = [] }
 
 let naturalNumbers =
     { new ICivicSet<int,Symbol> with
@@ -65,7 +66,8 @@ let intProvenance : Provenance =
     { SourceName = "ZFC + Integer Construction"
       Step = 2
       Timestamp = Some(DateTime(1930, 1, 1))
-      Note = "Declared ℤ as the set of integers, constructed from ℕ using equivalence classes of ordered pairs." }
+      Note = "Declared ℤ as the set of integers, constructed from ℕ using equivalence classes of ordered pairs." 
+      Lineage = [] }
 
 let integers =
     { new ICivicSet<int,Symbol> with
@@ -133,7 +135,8 @@ let ratProvenance : Provenance =
     { SourceName = "ZFC + Rational Construction"
       Step = 3
       Timestamp = Some(DateTime(1930, 1, 1))
-      Note = "Declared ℚ as the set of rational numbers, constructed from ℤ using equivalence classes of integer pairs." }
+      Note = "Declared ℚ as the set of rational numbers, constructed from ℤ using equivalence classes of integer pairs." 
+      Lineage = [] }
 
 let rationals =
     { new ICivicSet<Rational,Symbol> with
@@ -179,7 +182,8 @@ let realProvenance : Provenance =
     { SourceName = "ZFC + Dedekind/Completeness Axioms"
       Step = 4
       Timestamp = Some(DateTime(1930, 1, 1))
-      Note = "Declared ℝ as the set of real numbers, constructed via Dedekind cuts or Cauchy sequences over ℚ." }
+      Note = "Declared ℝ as the set of real numbers, constructed via Dedekind cuts or Cauchy sequences over ℚ." 
+      Lineage = [] }
 
 let reals =
     { new ICivicSet<float, Symbol> with
@@ -341,6 +345,7 @@ printfn "%s" (civicSetInspectorReport naturalNumbers)
 // Sample ICivicSet implementations for testing
 // ---------------------------
 let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
+    
     { new ICivicSet<int, Symbol> with
         member _.Symbol = Some name
         member _.Formula = None
@@ -349,7 +354,12 @@ let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
         member _.Compare = Some compare
         member _.Min = if List.isEmpty vals then None else Some (List.min vals)
         member _.Max = if List.isEmpty vals then None else Some (List.max vals)
-        member _.Metadata = [ Tag $"SimpleSet:{name}"; Provenance { SourceName = name; Step = 1; Timestamp = Some DateTime.UtcNow; Note = "original" } ]
+        member _.Metadata = [ Tag $"SimpleSet:{name}"; 
+                              Provenance { SourceName = name; 
+                                           Step = 2; 
+                                           Timestamp = Some DateTime.UtcNow; 
+                                           Note = "original"; 
+                                           Lineage = [natProvenance] } ]
         member _.IsClosedUnder _ = false
         member _.Implies _ = false
         member _.EquivalentTo _ = false }
@@ -382,10 +392,11 @@ let flattened =
         | Nested _ -> Seq.empty)
 
 printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
-let CollapsedToConcrete =
-    let collapsed = CivicSetConstructors.collapseLiftedToConcrete true true unionSet
+let collapsed = CivicSetConstructors.collapseLiftedToConcrete true true unionSet
+let CollapsedToConcrete =    
     match collapsed with
     | Some x -> x.Elements 
     | None -> []
 
 printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
+printfn "Collapsed to Concrete: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))

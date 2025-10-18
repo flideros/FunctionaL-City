@@ -7,7 +7,8 @@ type Provenance =
     { SourceName: string; // Clear, human-readable name of the origin (e.g., "SensorA", "UserInput", "Socrotes").
       Step: int;
       Timestamp: DateTime option;
-      Note: string } 
+      Note: string 
+      Lineage: Provenance list} 
 
 /// Cell that always carries a payload and optional provenance
 type LiftedCell<'T> = { Value: 'T; Provenance: Provenance option }
@@ -23,7 +24,8 @@ module Provenance =
         { SourceName = ""
           Step = 0
           Timestamp = None
-          Note = "" }
+          Note = "" 
+          Lineage = [] }
 
     let isEmpty (p: Provenance) =
         p.SourceName = "" && p.Note = "" && p.Timestamp.IsNone && p.Step = 0
@@ -32,6 +34,17 @@ module Provenance =
         match p.Timestamp with
         | None -> $"Step {p.Step} from {p.SourceName} — {p.Note}"
         | Some _ -> $"Step {p.Step} from {p.SourceName} on {p.Timestamp.Value} — {p.Note}"
+    
+    /// Derived provenance: Step = 1 + max(parent.Step) or 1 if none.
+    let mkDerived (sourceName: string) (operation : string) (parents: Provenance option list) : Provenance =
+        let lineage = parents |> List.choose id |> List.map (fun p -> p)
+        let parentSteps = parents |> List.choose id |> List.map (fun p -> p.Step)
+        let maxParent = if List.isEmpty parentSteps then 0 else List.max parentSteps
+        { SourceName = sourceName
+          Step = maxParent + 1
+          Timestamp = Some DateTime.UtcNow
+          Note = $"Derived provenance ({operation})" 
+          Lineage = lineage }
 
 module Lifted =
 

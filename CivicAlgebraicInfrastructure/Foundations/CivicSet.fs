@@ -63,21 +63,9 @@ type ICivicSet<'Concrete,'Symbolic> =
     abstract member EquivalentTo : ICivicSet<'Concrete,'Symbolic> -> bool
 
 module CivicSetConstructors =
-    /// Helpers for metadata / provenance extraction and merging
-    let private pickProvenanceFromMetadata (meta: CivicSetMetadataItem list) : Provenance option =
-        meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
-
-    let private mergeMetadata (ma: CivicSetMetadataItem list) (mb: CivicSetMetadataItem list) : CivicSetMetadataItem list =
-        ma @ mb @ [ Tag "LiftedUnion" ]
-
-    /// Derived provenance: Step = 1 + max(parent.Step) or 1 if none.
-    let mkDerivedProvenance (sourceName: string) (parents: Provenance option list) : Provenance =
-        let parentSteps = parents |> List.choose id |> List.map (fun p -> p.Step)
-        let maxParent = if List.isEmpty parentSteps then 0 else List.max parentSteps
-        { SourceName = sourceName
-          Step = maxParent + 1
-          Timestamp = Some DateTime.UtcNow
-          Note = "Derived provenance (union/lifted)" }
+    /// Helpers for set metadata / provenance extraction
+    let private pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
+        meta |> List.tryPick (function Provenance p -> Some p | _ -> None)    
 
     /// synthesize canonical quantified union ∀x. x∈A ∨ x∈B from two Symbols
     let private canonicalUnionFromSymbols (aSym: Symbol) (bSym: Symbol) : Formula<Symbol> =
@@ -118,18 +106,18 @@ module CivicSetConstructors =
         : ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S> =
 
         // parent provenance
-        let pa = pickProvenanceFromMetadata a.Metadata
-        let pb = pickProvenanceFromMetadata b.Metadata
+        let pa = pickProvenanceFromSetMetadata a.Metadata
+        let pb = pickProvenanceFromSetMetadata b.Metadata
         let sharedSource = $"{aName} ∪ {bName}"
 
         // LiftedCell wrappers for both sets (derive provenance step from parents)
         let cellA : LiftedCell<ICivicSet<'A,'S>> =
             { Value = a
-              Provenance = Some (mkDerivedProvenance $"{sharedSource} (A-wrapper)" [ pa; pb ]) }
+              Provenance = Some (Provenance.mkDerived "union(A-wrapper)" "union/lifted" [ pa; pb ]) }
 
         let cellB : LiftedCell<ICivicSet<'B,'S>> =
             { Value = b
-              Provenance = Some (mkDerivedProvenance $"{sharedSource} (B-wrapper)" [ pa; pb ]) }
+              Provenance = Some (Provenance.mkDerived $"union (B-wrapper)" "union/lifted" [ pa; pb ]) }
 
         let elementsSeq : seq<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>> = seq { yield A cellA; yield B cellB }
 
@@ -151,7 +139,7 @@ module CivicSetConstructors =
             | Some sa, Some sb -> Some $"{sa} ∪ {sb}"
             | _ -> None
 
-        let unionProv = mkDerivedProvenance (unionSymbol |> Option.defaultValue sharedSource) [ pa; pb ]
+        let unionProv = Provenance.mkDerived (unionSymbol |> Option.defaultValue sharedSource) "union/lifted" [ pa; pb ]
 
         { new ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S> with
             member _.Symbol : string option = unionSymbol
@@ -161,7 +149,7 @@ module CivicSetConstructors =
             member _.Compare = None
             member _.Min = None
             member _.Max = None
-            member _.Metadata : CivicSetMetadataItem list = mergeMetadata a.Metadata b.Metadata @ [ Provenance unionProv ]
+            member _.Metadata : CivicSetMetadataItem list = [ Tag "LiftedUnion" ] @ [ Provenance unionProv ]
             member _.IsClosedUnder _ = false
             member _.Implies _ = false
             member _.EquivalentTo _ = false }
@@ -265,7 +253,7 @@ module CivicSetConstructors =
 
                 let parentProvs = parts |> List.map snd
                 let sharedSource = match liftedSet.Symbol with Some s -> s | None -> "collapsed-lifted"
-                let derived = mkDerivedProvenance sharedSource parentProvs
+                let derived = Provenance.mkDerived sharedSource "collapse lifted to concrete"parentProvs
 
                 let symbol = liftedSet.Symbol
 
@@ -278,10 +266,7 @@ module CivicSetConstructors =
                         member _.Compare = None
                         member _.Min = None
                         member _.Max = None
-                        member _.Metadata =
-                            let leftMeta = (parts.[0] |> fst).Metadata
-                            let rightMeta = if List.length parts > 1 then (parts.[1] |> fst).Metadata else []
-                            mergeMetadata leftMeta rightMeta @ [ Provenance derived ]
+                        member _.Metadata = [ Tag "LiftedUnion" ] @ [ Provenance derived ]
                         member _.IsClosedUnder _ = false
                         member _.Implies _ = false
                         member _.EquivalentTo _ = false }
