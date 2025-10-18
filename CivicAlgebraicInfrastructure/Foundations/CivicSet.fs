@@ -113,11 +113,11 @@ module CivicSetConstructors =
         // LiftedCell wrappers for both sets (derive provenance step from parents)
         let cellA : LiftedCell<ICivicSet<'A,'S>> =
             { Value = a
-              Provenance = Some (Provenance.mkDerived "union(A-wrapper)" "union/lifted" [ pa; pb ]) }
+              Provenance = Some (Provenance.mkDerived "union(A-wrapper)" "union/lifted" [ pa ]) }
 
         let cellB : LiftedCell<ICivicSet<'B,'S>> =
             { Value = b
-              Provenance = Some (Provenance.mkDerived $"union (B-wrapper)" "union/lifted" [ pa; pb ]) }
+              Provenance = Some (Provenance.mkDerived $"union (B-wrapper)" "union/lifted" [ pb ]) }
 
         let elementsSeq : seq<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>> = seq { yield A cellA; yield B cellB }
 
