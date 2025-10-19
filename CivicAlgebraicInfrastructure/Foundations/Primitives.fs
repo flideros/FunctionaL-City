@@ -46,6 +46,26 @@ module Provenance =
           Note = $"Derived provenance ({operation})" 
           Lineage = lineage }
 
+    let rec EmitSourceWithLineageTrail (p: Provenance) : string =
+        let basis = $"[Step {p.Step}] Source: {p.SourceName}"
+        match p.Step, p.Lineage with
+        | 1, _ -> $"ExtractSourceNameWithLineage: {basis}"
+        | _, [] -> $"ExtractSourceNameWithLineage: {basis} → No deeper lineage"
+        | _, lineage ->
+            let trail =
+                lineage
+                |> List.map EmitSourceWithLineageTrail
+                |> String.concat "\n→ "
+            $"ExtractSourceNameWithLineage: {basis}\n→ {trail}"
+
+    let rec GetStepOneProvenance (p: Provenance) : Provenance option =
+        match p.Step = 1 with 
+        | true -> Some p
+        | false -> 
+            p.Lineage
+            |> List.choose GetStepOneProvenance
+            |> List.tryHead
+
 module Lifted =
 
     /// Map over A payloads

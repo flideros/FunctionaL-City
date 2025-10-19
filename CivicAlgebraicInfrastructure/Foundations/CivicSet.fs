@@ -109,7 +109,7 @@ module CivicSetConstructors =
                 | Some TotalOrder, Some TotalOrder -> Some TotalOrder
                 | _ -> None
             | _ -> None
-
+        
         { Cardinality = mergedCardinality;
           Countability = mergedCountability;
           OrderType = mergedOrderType }
@@ -285,21 +285,24 @@ module CivicSetConstructors =
                 parts
                 |> List.choose snd
 
-        // TODO need to come up with a better way to compare provenace here.
             let distinctSources =
                 provs
-                |> List.map (fun p -> p.SourceName)
+                |> List.map (fun p -> 
+                    match Provenance.GetStepOneProvenance p with
+                    | Some p1 -> Provenance.EmitSourceWithLineageTrail p1
+                    | None -> Provenance.EmitSourceWithLineageTrail p)
                 |> List.distinct
 
             let canCollapse =
                 collapseWhenProvenanceDiffers
-                || (List.length distinctSources <= 1)
-        // TODO need to come up with a better way to work with comparer list.
+                || List.length distinctSources <= 1
+        
             let comparer =
                 parts
                 |> List.map (fun x -> (fst x).Compare)
+                |> List.tryPick id
 
-            match canCollapse, comparer.[0]  with 
+            match canCollapse, comparer  with 
             | false, _ | true, None -> None
             | true, Some c ->
                 // 1) collect all elements (one sequence)
@@ -320,8 +323,8 @@ module CivicSetConstructors =
 
                 // 2) apply deDuplicate or identity (both are seq<'T> -> seq<'T>)
                 let deDuplicated : seq<'T> =
-                    match deDuplicate, comparer.IsEmpty with
-                    | true, false -> distinctByCompare comparer.[0].Value collected 
+                    match deDuplicate, comparer with
+                    | true, Some c -> distinctByCompare c collected 
                     | _, _ -> collected
                 
                 let setTheoreticMetadata = 
@@ -333,17 +336,17 @@ module CivicSetConstructors =
                                 OrderType = None }
 
                 let min = 
-                    match deDuplicate, comparer.IsEmpty with
-                    | true, false -> 
-                        distinctByCompare comparer.[0].Value collected 
-                        |> tryMinByCompare comparer.[0]
+                    match deDuplicate, comparer with
+                    | true, Some c -> 
+                        distinctByCompare c collected 
+                        |> tryMinByCompare comparer
                     | _, _ -> None         
                 
                 let max = 
-                    match deDuplicate, comparer.IsEmpty with
-                    | true, false -> 
-                        distinctByCompare comparer.[0].Value collected 
-                        |> tryMaxByCompare comparer.[0]
+                    match deDuplicate, comparer with
+                    | true, Some c -> 
+                        distinctByCompare c collected 
+                        |> tryMaxByCompare comparer
                     | _, _ -> None
 
                 let formulaOpt: Formula<'S> option = liftedSet.Formula
@@ -360,10 +363,10 @@ module CivicSetConstructors =
                         member _.Formula = formulaOpt
                         member _.Contains (x:'T) = parts |> Seq.exists (fun (set,_) -> set.Contains x)
                         member _.Elements = deDuplicated
-                        member _.Compare = comparer.[0]
+                        member _.Compare = comparer
                         member _.Min = min
                         member _.Max = max
-                        member _.Metadata = [ Tag "LiftedUnion" ] @ [SetTheoretic setTheoreticMetadata] @ [ Provenance derived ]
+                        member _.Metadata = [ Tag "CollapsedFromLiftedUnion" ] @ [ SetTheoretic setTheoreticMetadata ] @ [ Provenance derived ]
                         member _.IsClosedUnder _ = false
                         member _.Implies _ = false
                         member _.EquivalentTo _ = false }

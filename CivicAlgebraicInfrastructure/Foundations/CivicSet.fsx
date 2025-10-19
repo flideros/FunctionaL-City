@@ -395,7 +395,9 @@ let flattened =
         | Nested _ -> Seq.empty)
 
 printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
-let collapsed = CivicSetConstructors.collapseLiftedToConcrete true true unionSet
+let collapsed = CivicSetConstructors.collapseLiftedToConcrete true false unionSet
+
+// Collapse to concrete example
 let CollapsedToConcrete =    
     match collapsed with
     | Some x -> x.Elements 
@@ -404,3 +406,4 @@ let CollapsedToConcrete =
 printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed.Value)
+printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
