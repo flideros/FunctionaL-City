@@ -4,26 +4,68 @@ open System
 open CivicAlgebraicInfrastructure.Foundations.Primitives
 open CivicAlgebraicInfrastructure.Foundations.FOL
 
+/// <summary>
+/// Cardinality classification used for set-theoretic signage and provenance.
+/// </summary>
+/// <signage>
+/// - Finite: concrete integer cardinality used for precise signage.
+/// - Aleph0: countably infinite, signage-friendly symbol ℵ₀.
+/// - Continuum: cardinality of real numbers, signage-friendly symbol 2^ℵ₀.
+/// - Other: extension point for domain-specific cardinalities, carry a short identifier.
+/// </signage>
 type Cardinality =
     | Finite of int
     | Aleph0    // ℵ₀
     | Continuum // 2^ℵ₀
     | Other of string
 
+/// <summary>
+/// Countability classification for sets used in metadata merge rules and signage overlays.
+/// </summary>
+/// <signage>
+/// - Countable: supports enumeration signs and enumerator overlays.
+/// - Uncountable: signals continuum-like behavior; dominates merges.
+/// </signage>
 type Countability =
     | Countable
     | Uncountable
 
+/// <summary>
+/// Order type of a set used to declare ordering affordances on signage.
+/// </summary>
+/// <signage>
+/// - TotalOrder: every pair comparable; signage can show min/max and ordering rules.
+/// - PartialOrder: some pairs incomparable; signage should include comparator policy.
+/// - Unordered: no ordering; signage indicates unordered collection.
+/// </signage>
 type OrderType =
     | TotalOrder
     | PartialOrder
     | Unordered
 
+/// <summary>
+/// Aggregated set-theoretic metadata: cardinality, countability, and order type.
+/// </summary>
+/// <signage>
+/// Used as a primary payload for civic signage about sets; can be attached to sets
+/// to form overlays that inform UI, proof-checkers, or migrators.
+/// </signage>
 type SetTheoreticMetadata =
     { Cardinality  : Cardinality option
       Countability : Countability option
       OrderType    : OrderType option }
 
+/// <summary>
+/// Union type for metadata items that can be attached to civic sets as signage artifacts.
+/// </summary>
+/// <signage>
+/// - SetTheoretic: structured set-theory metadata for tooling and documentation.
+/// - FOL: logical overlay derived from first-order logic metadata.
+/// - Provenance: explicit provenance stripe for lineage tracing.
+/// - Tag: short free-form signage token for indexers and search.
+/// - Note: longer human-readable signage for onboarding overlays.
+/// - Custom: extension point (key,value) for downstream consumers.
+/// </signage>
 type CivicSetMetadataItem =
     | SetTheoretic of SetTheoreticMetadata
     | FOL of FOLMetadata
@@ -32,45 +74,71 @@ type CivicSetMetadataItem =
     | Note of string
     | Custom of string * string // extension point
 
-type SetProvenance =
-    | FromSet of string
-    | FromUnion of SetProvenance list
-    | FromIntersection of SetProvenance list
-    | FromComplement of SetProvenance
-    | FromConstructor of string
-    | FromAxiom of string
-    | FromImport of string
-    | FromSymbolic of Formula<Symbol>
-
-// Interface   
+/// <summary>
+/// Interface describing a civic set with both concrete and symbolic overlays.
+/// </summary>
+/// <typeparam name="Concrete">Element type exposed by the concrete set</typeparam>
+/// <typeparam name="Symbolic">Symbol type used in symbolic formulas (typically Symbol)</typeparam>
+/// <signage>
+/// ICivicSet is the primary contract for all civic set representations. Implementations
+/// should prefer to include Metadata entries with SetTheoretic and Provenance items
+/// to enable predictable merging and signage syntheses.
+/// </signage>  
 type ICivicSet<'Concrete,'Symbolic> =
+    /// Symbolic name for the set used in signage synthesis.
     abstract member Symbol : string option
+    /// Optional symbolic formula describing the set (FOL overlay).
     abstract member Formula : Formula<'Symbolic> option
+    /// Predicate testing membership of a concrete element.
     abstract member Contains : 'Concrete -> bool
+    /// Elements sequence for enumeration, used by collapse and flatten operations.
     abstract member Elements : seq<'Concrete>
-
-    // Ordering
+    /// Optional comparer used for ordering, if available.
     abstract member Compare : option<'Concrete -> 'Concrete -> int>
+    /// Optional minimal element when ordering is present.
     abstract member Min : option<'Concrete>
+    /// Optional maximal element when ordering is present.
     abstract member Max : option<'Concrete>
-
-    // Meta-signage (derived or declared)
+    /// Attached metadata signage artifacts.
     abstract member Metadata : CivicSetMetadataItem list
-
-    // Logical overlays
+    /// Logical overlay: tests closedness under set operators.
     abstract member IsClosedUnder : (ICivicSet<'Concrete,'Symbolic> -> ICivicSet<'Concrete,'Symbolic>) -> bool
+    /// Logical overlay: implication relation to another civic set.
     abstract member Implies : ICivicSet<'Concrete,'Symbolic> -> bool
+    /// Logical overlay: equivalence relation to another civic set.
     abstract member EquivalentTo : ICivicSet<'Concrete,'Symbolic> -> bool
 
 module CivicSetConstructors =
-    /// Helper for set provenance extraction
+    /// <summary>
+    /// Extracts the first Provenance entry from metadata if present.
+    /// </summary>
+    /// <returns>Some provenance or None.</returns>
+    /// <signage>Used by constructors to inherit and synthesize derived provenance.</signage>
     let private pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
         meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
 
-    /// Helper for set theoretic metadata extraction
+    /// <summary>
+    /// Extracts the first SetTheoretic metadata entry from metadata if present.
+    /// </summary>
+    /// <returns>Some set-theoretic metadata or None.</returns>
+    /// <signage>Used during merges to preserve cardinality and ordering overlays.</signage>
     let private pickSetTheoreticMetadataFromSetMetadata (meta: CivicSetMetadataItem list) : SetTheoreticMetadata option =
         meta |> List.tryPick (function SetTheoretic st -> Some st | _ -> None)  
 
+    /// <summary>
+    /// Merge two optional SetTheoreticMetadata records into a single canonical record.
+    /// </summary>
+    /// <param name="a">First metadata option.</param>
+    /// <param name="b">Second metadata option.</param>
+    /// <param name="elementCount">Concrete element count to use for finite merges.</param>
+    /// <returns>Merged SetTheoreticMetadata.</returns>
+    /// <signage>
+    /// Merge policy (expressed as signage):
+    /// - Cardinality: if both finite, choose the concrete elementCount; continuum and aleph0 dominate where present.
+    /// - Countability: Uncountable dominates; otherwise Countable is assumed when unspecified.
+    /// - OrderType: Unordered dominates, partial order is next, total order only if both are total.
+    /// These rules become part of the civic ordinance for metadata merges.
+    /// </signage>
     let mergeSetTheoreticMetadata
         (a: SetTheoreticMetadata option)
         (b: SetTheoreticMetadata option)
@@ -114,32 +182,60 @@ module CivicSetConstructors =
           Countability = mergedCountability;
           OrderType = mergedOrderType }
 
-    /// Helper for set min
+    /// <summary>
+    /// Try to obtain the minimal element from a sequence using an optional comparer.
+    /// </summary>
+    /// <returns>Option minimal element or None when no comparer is available.</returns>
+    /// <signage>Utility used by collapse operations to populate Min signage.</signage>
     let tryMinByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
         match compareOpt with
         | Some cmp -> items |> Seq.sortWith cmp |> Seq.tryHead
         | None -> None
 
-    /// Helper for set min
+    /// <summary>
+    /// Try to obtain the maximal element from a sequence using an optional comparer.
+    /// </summary>
+    /// <returns>Option maximal element or None when no comparer is available.</returns>
+    /// <signage>Utility used by collapse operations to populate Max signage.</signage>
     let tryMaxByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
         match compareOpt with
         | Some cmp -> items |> Seq.sortWith (fun x y -> cmp y x) |> Seq.tryHead
         | None -> None
 
-    /// synthesize canonical quantified union ∀x. x∈A ∨ x∈B from two Symbols
+    /// <summary>
+    /// Synthesize a canonical symbolic union formula from two symbol constants.
+    /// </summary>
+    /// <remarks>
+    /// Produces a quantified formula ∀x. x ∈ A ∨ x ∈ B when symbols are available; used when
+    /// two sets carry only symbol names rather than full formulas.
+    /// </remarks>
+    /// <signage>Emits a compact symbolic union overlay for signage when formulas absent.</signage>
     let private canonicalUnionFromSymbols (aSym: Symbol) (bSym: Symbol) : Formula<Symbol> =
         let x = { Name = "x"; Kind = VariableKind; Arity = None }
         let inA = Formulae.memberOf (Var x) (Constant aSym)
         let inB = Formulae.memberOf (Var x) (Constant bSym)
         Quantified { Bound = ForAll x; Body = Formulae.unionFormula inA inB }
 
-    /// Try to unbox Formula<'S> to Formula<Symbol> when S = Symbol
+    /// <summary>
+    /// Try to unbox a Formula<'S> to Formula<Symbol> when the generic instantiation equals Symbol.
+    /// </summary>
+    /// <returns>Some Formula<Symbol> when successful, otherwise None.</returns>
+    /// <signage>Helper used during symbolic synthesis to avoid unsafe casts across generics.</signage>
     let private tryUnboxFormula<'S> (fOpt: Formula<'S> option) : Formula<Symbol> option =
         match fOpt with
         | Some f when typeof<'S> = typeof<Symbol> -> Some (unbox<Formula<Symbol>> (box f))
         | _ -> None
 
-    /// Build synthesized symbolic union (Formula<Symbol> option) using available formulas or symbols
+    /// <summary>
+    /// Build a synthesized symbolic union using available formulas or symbols from two civic sets.
+    /// </summary>
+    /// <returns>Optional synthesized Formula<Symbol> representing the union.</returns>
+    /// <signage>
+    /// Priority:
+    /// 1. If both sets have symbol-level formulas, union them.
+    /// 2. If both have symbol names, build canonical quantified union from symbols.
+    /// 3. If one side has a formula and the other a symbol, synthesize by combining membership and the formula.
+    /// </signage>
     let private synthesizeSymbolicUnion (a: ICivicSet<_,_>) (b: ICivicSet<_,_>) : Formula<Symbol> option =
         let fA = tryUnboxFormula a.Formula
         let fB = tryUnboxFormula b.Formula
@@ -157,18 +253,20 @@ module CivicSetConstructors =
         | _ -> None
 
     /// <summary>
-    /// Constructs a lifted set-of-sets <c>ICivicSet</c> whose <c>Elements</c> are two <c>Lifted</c> cells wrapping the operand sets.
-    /// Each operand is encapsulated in a <c>LiftedCell</c> with derived provenance. The resulting set preserves symbolic lineage
-    /// and may include a synthesized symbolic formula if applicable.
+    /// Constructs a lifted set-of-sets ICivicSet whose Elements are two Lifted cells wrapping operand sets.
     /// </summary>
     /// <param name="aName">Symbolic name for the first operand set, used in provenance and signage synthesis.</param>
     /// <param name="bName">Symbolic name for the second operand set, used in provenance and signage synthesis.</param>
     /// <param name="a">First civic set to be lifted and unioned.</param>
     /// <param name="b">Second civic set to be lifted and unioned.</param>
     /// <returns>
-    /// A lifted civic set of type <c>ICivicSet&lt;Lifted&lt;ICivicSet&lt;'A,'S&gt;, ICivicSet&lt;'B,'S&gt;&gt;,'S&gt;</c>,
-    /// containing wrappers for both input sets, with derived provenance and optional symbolic formula.
+    /// A lifted civic set containing wrappers for both input sets, with derived provenance and optional symbolic formula.
     /// </returns>
+    /// <signage>
+    /// - Tag: LiftedUnion
+    /// - Provenance: derived from parents, step "union/lifted"
+    /// - Metadata: merged SetTheoretic metadata computed from children
+    /// </signage>
     let unionLiftedSets<'A,'B,'S when 'S :> obj>
         (aName: string) (bName: string)
         (a: ICivicSet<'A,'S>) (b: ICivicSet<'B,'S>)
@@ -228,9 +326,12 @@ module CivicSetConstructors =
             member _.Implies _ = false
             member _.EquivalentTo _ = false }
 
-    /// Recursively collect Choice<'A,'B> elements from a nested Lifted<'A,'B>
-    /// Here the Lifted payloads are whole ICivicSet<'A,'S> and ICivicSet<'B,'S>,
-    /// so when we hit an A or B we enumerate that set's Elements.
+    /// <summary>
+    /// Recursively collect Choice<'A,'B> elements from a nested Lifted payload where the Lifted
+    /// payloads are whole ICivicSet instances. When encountering A or B, enumerate that set's Elements.
+    /// </summary>
+    /// <returns>Sequence of Choice representing flattened members.</returns>
+    /// <signage>Handles arbitrarily nested Nested branches so flattening signage can be emitted consistently.</signage>
     let rec private recFlattenLifted<'A,'B,'S>
         (lifted: Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>)
         : seq<Choice<'A,'B>> =
@@ -248,8 +349,12 @@ module CivicSetConstructors =
                     yield inner
         }
 
+    /// <summary>
     /// Flatten the lifted set-of-sets into a sequence of Choice<'A,'B>.
-    /// Handles arbitrarily nested Nested branches.
+    /// </summary>
+    /// <param name="liftedSet">Lifted set instance.</param>
+    /// <returns>Flattened sequence of members with branch tags.</returns>
+    /// <signage>Used by collapse operations and for readable signage of nested unions.</signage>
     let flattenLiftedMembers<'A,'B,'S>
         (liftedSet: ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S>)
         : seq<Choice<'A,'B>> =
@@ -260,9 +365,20 @@ module CivicSetConstructors =
             | B c -> c.Value.Elements |> Seq.map Choice2Of2
             | Nested c -> recFlattenLifted<'A,'B,'S> c.Value)
 
+    /// <summary>
     /// Collapse a lifted set-of-sets into a concrete ICivicSet<'T,'S> when both branches contain sets of the same element type 'T.
-    /// - dedup: whether to distinct elements (default true)
-    /// - collapseWhenProvenanceDiffers: when false and provenance differs, returns None to indicate caller must decide
+    /// </summary>
+    /// <param name="deDuplicate">Whether to distinct elements (default true).</param>
+    /// <param name="collapseWhenProvenanceDiffers">When false and provenance differs, returns None so caller decides.</param>
+    /// <param name="liftedSet">Lifted set-of-sets instance.</param>
+    /// <returns>Some concrete ICivicSet when collapse permitted, otherwise None.</returns>
+    /// <signage>
+    /// Collapse policy:
+    /// - If provenance differs and collapseWhenProvenanceDiffers is false, refuse collapse to preserve lineage.
+    /// - If comparer absent, collapse is refused to prevent accidental reordering semantics.
+    /// - De-duplication uses comparer if requested; otherwise elements concatenated in original order.
+    /// Emits Metadata: Tag "CollapsedFromLiftedUnion" and derived Provenance step "collapse lifted to concrete".
+    /// </signage>
     let collapseLiftedToConcrete<'T,'S when 'S :> obj>
         (deDuplicate: bool)
         (collapseWhenProvenanceDiffers: bool)
@@ -375,5 +491,9 @@ module CivicSetConstructors =
 
 module Operations =
     
+    /// <summary>
+    /// Determine whether set a is a subset of set b by checking every element of a is contained in b.
+    /// </summary>
+    /// <returns>True when a ⊆ b.</returns>
     let isSubsetOf (a: ICivicSet<'T,'S>) (b: ICivicSet<'T,'S>) : bool =
         a.Elements |> Seq.forall b.Contains
