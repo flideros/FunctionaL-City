@@ -355,6 +355,9 @@ let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
         member _.Min = if List.isEmpty vals then None else Some (List.min vals)
         member _.Max = if List.isEmpty vals then None else Some (List.max vals)
         member _.Metadata = [ Tag $"SimpleSet:{name}"; 
+                              SetTheoretic { Cardinality  = Some (Finite vals.Length)
+                                             Countability = Some Countable
+                                             OrderType    = Some TotalOrder }
                               Provenance { SourceName = name; 
                                            Step = 2; 
                                            Timestamp = Some DateTime.UtcNow; 
@@ -365,7 +368,7 @@ let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
         member _.EquivalentTo _ = false }
 
 let setA = makeSimpleSet "Nat" [1;2;3]
-let setB = makeSimpleSet "Odds" [1;3;5]
+let setB = makeSimpleSet "Odds" [1;3;5;7;9]
 
 let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB
 
@@ -399,4 +402,5 @@ let CollapsedToConcrete =
     | None -> []
 
 printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
-printfn "Collapsed to Concrete: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
+printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
+printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed.Value)
