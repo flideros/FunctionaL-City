@@ -6,7 +6,7 @@
 - [Primitives.fsx](Primitives.fsx) — interactive case law  
 
 ## Preamble
-This namespace collects domain-model **primitives** that serve as the foundational building blocks for CivicAlgebraicInfrastructure. The first primitive provided is the **Lifted** type, a minimal, civic-grade union type that encodes payloads with explicit provenance and composable nesting. The module establishes clear, testable contracts for each primitive so remixers, migrators, and auditors can rely on structural, behavioral, and provenance guarantees.
+This namespace collects domain-model **primitives** that serve as the foundational building blocks for CivicAlgebraicInfrastructure. The first primitive provided is the **LiftedCell / Lifted** type, a minimal, civic-grade union type that encodes payloads with explicit provenance and composable nesting. The module establishes clear, testable contracts for each primitive so remixers, migrators, and auditors can rely on structural, behavioral, and provenance guarantees.
 
 ## Purpose
 - **Primitive intent** The primitives are small, composable types and helpers that express core domain invariants as legal, narratable artifacts engineers can reason about across migrations and transforms.
@@ -19,75 +19,142 @@ This namespace collects domain-model **primitives** that serve as the foundation
 
 - **Namespace responsibility** This namespace documents invariants, exposes only pure helpers that preserve provenance unless documented otherwise, and provides clear onboarding examples so future contributors treat these types as enduring civic infrastructure.
 
-## Scope
-Applies to the module `CivicAlgebraicInfrastructure.Foundations.Primitives.Lifted` and any consumer code that constructs, inspects, folds, or mutates `Lifted<'A,'B>` values.
+## Primitives
 
-## Invariants
-- **Payload Guarantee** Each `Lifted` node must carry exactly one payload value inside its `LiftedCell<'T>`; there must be no empty payload variant.
+This file defines the lightweight algebraic primitives used across the Civic
+Algebraic Infrastructure. It documents the LiftedCell shape, provenance model,
+and traversal / mapping semantics expected from implementations.
 
-- **Provenance Optionality** Provenance is optional on every cell; absence is allowed but explicit; provenance values, when present, are authoritative and immutable except via explicit reassign operations.
+### Provenance Contract
 
-- **Nesting Semantics** `Nested` always wraps a `LiftedCell` whose `Value` is a `Lifted<'A,'B>` instance; there are no other hidden wrappers.
+Provenance records authoritative lineage metadata for LiftedCell payloads and
+establishes the following guarantees.
 
- - **Structural Identity** Node identity is structural; equality and hashing should consider payload and provenance as part of the cell.
+- **Immutability**
+  Provenance values attached to LiftedCell instances are authoritative and may
+  only be changed by the explicit `reassignProvenance` operation. Helper
+  functions that transform payloads must not mutate provenance in-place.
 
-- **No Side Effects** All module functions must be pure and total for finite trees; no mutation, I/O, or hidden state.
+- **Step semantics**
+  `Step` is a strictly increasing nonnegative integer representing derivation
+  depth. `mkDerived` sets `Step = 1 + max(parent.Step)` where missing parent
+  Step values are treated as `0`. Original source claims have `Step = 1`.
 
-## Naming Conventions
-- **Types** Keep Provenance, `LiftedCell<'T>`, and `Lifted<'A,'B>` as declared.
+- **Timestamp semantics**
+  Timestamps are stored in UTC. Implementations must use `DateTime.UtcNow` when
+  creating derived provenance to ensure consistent ordering across systems.
 
-- **Module** Keep module name `Lifted`.
+- **Lineage shape**
+  `Lineage` is a finite, ordered, acyclic list of Provenance entries
+  representing direct parent provenance in descending ancestry order.
+  Implementations must prevent cycles and keep lineage lists finite.
 
-- **Functions** Use clear verbs: `mapA`, `mapB`, `mapAll`, `collectA`, `collectB`, `collectProvenance`, `tryFindProvenance`, `fold`, `count`, `depth`, `reassignProvenance`.
+- **Equality and hashing**
+  Provenance equality and hashing are structural over `SourceName`, `Step`,
+  `Timestamp`, `Note`, and `Lineage`. Use structural equality when comparing
+  Provenance for identity checks.
 
-- **Internal helpers** must be private and prefixed with `private` and a verb describing action.
+### Traversal and Fold Semantics
 
-## Function Contracts
-*-* **mapA : ('A -> 'A2) -> Lifted<'A,'B> -> Lifted<'A2,'B>**
+These traversal rules are ordinance-level guarantees so consumer code can
+depend on deterministic visitation order and accumulator behavior.
 
-  * Applies f only to every A payload; preserves cell provenance and B payloads unchanged.
+- **Traversal order**
+  All `collect*` functions and `collectProvenance` traverse the `LiftedCell`
+  structure in root-first, left-to-right recursion order and return sequences
+  in the exact order visited.
 
-*.* **mapB : ('B -> 'B2) -> Lifted<'A,'B> -> Lifted<'A,'B2>**
+- **tryFind semantics**
+  `tryFindProvenance` and `tryFind` return the first matching value found using
+  root-to-leaf, left-to-right search and short-circuit immediately when a match
+  is discovered.
 
-  * Applies f only to every B payload; preserves cell provenance and A payloads unchanged.
+- **Fold contract**
+  `fold fA fB acc lifted` applies as follows:
+  1. Visit the current cell first.
+  2. If the cell is `A` call `fA acc aCell` to produce a new accumulator.
+  3. If the cell is `B` call `fB acc bCell` to produce a new accumulator.
+  4. If the cell is `Nested` recurse into the nested `Value` with the
+     accumulator returned from visiting the wrapper cell.
+  Both `fA` and `fB` accept the current accumulator and the cell and must
+  return the new accumulator.
 
-*-* **mapAll : ('A -> 'A2) -> ('B -> 'B2) -> Lifted<'A,'B> -> Lifted<'A2,'B2>**
+- **Depth and count**
+  `count` and `depth` are pure folds. A leaf node has depth `1`. `depth` of
+  `Nested` is `1 + depth` of the inner value.
 
-  * Applies respective functions to all payloads recursively; preserves provenance on each cell.
+### Map and Reassign Guarantees
 
-*-* **collectA : Lifted<'A,'B> -> LiftedCell<'A> list**
+- **Provenance preservation**
+  Map functions `mapA`, `mapB`, and `mapAll` must preserve the optional
+  `Provenance` on each `LiftedCell` unless the function explicitly returns a
+  new `Provenance`. Payload transforms must not change provenance by default.
 
-  * Returns every A cell in document order.
+- **Nested behavior**
+  When mapping over `Nested`, the wrapper cell's `Provenance` is preserved and
+  mapping recurses into `Value`. Implementations must not drop wrapper
+  provenance.
 
-*-* **collectB : Lifted<'A,'B> -> LiftedCell<'B> list**
+- **Reassign semantics**
+  `reassignProvenance` replaces `Provenance` on every cell with `Some newProv`.
+  It sets the wrapper `Nested` cell provenance and then recurses into the
+  nested `Value`. `reassignProvenance` is the only authorized global-provenance
+  replacement operation; callers must create appropriate derived provenance via
+  `mkDerived` before calling `reassignProvenance`.
 
-  * Returns every B cell in document order.
+### Robustness, Performance, and Tests
 
-*-* **collectProvenance : Lifted<'A,'B> -> Provenance list**
+- **Required unit tests**
+  Implementations must include unit tests for every public function:
+  `mapA`, `mapB`, `mapAll`, `collectA`, `collectB`, `collectProvenance`,
+  `tryFindProvenance`, `fold`, `count`, `depth`, `reassignProvenance`. Tests
+  must include empty provenance, missing timestamps, deep nesting, and mixed
+  A/B trees.
 
-  * Returns every provenance in traversal order starting at the root cell, skipping missing provenance.
+- **Property tests**
+  Property tests must cover provenance preservation under `map*`, identity of
+  `count` under `reassign`, depth invariants, and traversal determinism
+  (`collect*` yields the same sequence as a fold-accumulated visitation).
 
-*-* **tryFindProvenance : Lifted<'A,'B> -> Provenance option**
+- **Stack-safety**
+  Implementations must document whether traversals are tail-recursive or
+  stack-safe. If not stack-safe include a note that extremely deep trees may
+  `StackOverflow` and provide a migration strategy or offer a streaming /
+  trampolined traversal variant.
 
-  * Returns the first found provenance in root-to-leaf order.
+- **Migration notes**
+  When changing `Step` semantics, `Lineage` shape, or timestamp rules, authors
+  must provide a migration plan and tooling to map existing Provenance into the
+  new shape. Migration plans must be included with breaking changes to the
+  ordinance.
 
-*-* **fold : (acc -> LiftedCell<'A> -> acc) -> (acc -> LiftedCell<'B> -> acc) -> acc -> Lifted<'A,'B> -> acc**
+### API Signatures and Examples
 
-  * Fold must visit the first encountered cell for A and B and recurse through Nested values.
+Include the following canonical contract snippets in the ordinance so reviewers
+can treat the document as an executable contract for implementers.
 
-*-* **count : Lifted<'A,'B> -> int**
+```fsharp
+type Provenance = {
+  SourceName: string
+  Step: int
+  Timestamp: System.DateTime
+  Note: string option
+  Lineage: Provenance list
+}
 
-  * Returns total number of nodes where each A, B, and Nested node counts as 1.
+type LiftedCell<'a,'b> =
+  | A of ARecord<'a>
+  | B of BRecord<'b>
+  | Nested of WrapperRecord<'a,'b>
 
-*-* **depth : Lifted<'A,'B> -> int**
-
-  * Returns maximal nesting depth where leaf A or B nodes have depth 1.
-
-*-* **reassignProvenance : Provenance -> Lifted<'A,'B> -> Lifted<'A,'B>**
-
-  * Replaces provenance on every cell with Some newProv.
-
-All functions must be total for finite trees and not raise exceptions for normal inputs.
+val mapA : (ARecord<'a> -> ARecord<'a2>) -> LiftedCell<'a,'b> -> LiftedCell<'a2,'b>
+val mapB : (BRecord<'b> -> BRecord<'b2>) -> LiftedCell<'a,'b> -> LiftedCell<'a,'b2>
+val mapAll : (obj -> obj) -> LiftedCell<'a,'b> -> LiftedCell<'a,'b>
+val collectProvenance : LiftedCell<'a,'b> -> Provenance seq
+val tryFindProvenance : (Provenance -> bool) -> LiftedCell<'a,'b> -> Provenance option
+val reassignProvenance : Provenance -> LiftedCell<'a,'b> -> LiftedCell<'a,'b>
+val mkDerived : sourceName:string -> parents:Provenance list -> note:string option -> Provenance
+```
 
 ## Zoning Map
 ```
@@ -102,12 +169,26 @@ All functions must be total for finite trees and not raise exceptions for normal
 |                                              | LiftedCell<Lifted<'A,'B>> | |
 |                                              +---------------------------+ |
 |                                                                            |
-| Public API (module Lifted):                                                |
+| **Public API (module Lifted):**                                            |
 |  mapA, mapB, mapAll, collectA, collectB,                                   |
 |  collectProvenance, tryFindProvenance, fold, count, depth,                 |
 |  reassignProvenance                                                        |
 +----------------------------------------------------------------------------+
 ```
+### Provenance: Step formula and Timestamp rule
+
+Implementers must compute `Step` exactly as:
+
+```text
+Step = 1 + (parents |> Seq.map (fun p -> p.Step) |> Seq.tryMax |> Option.defaultValue 0)
+```
+Timestamps stored in Provenance must use UTC with an explicit DateTimeKind. Example construction:
+
+```fsharp
+let ts = System.DateTime.UtcNow.ToUniversalTime()
+let p = mkDerived "source" parents (Some "note") // mkDerived must set Timestamp = ts and Step using the rule above
+```
+
 
 ## Flow Diagram
 ```
@@ -140,7 +221,24 @@ All functions must be total for finite trees and not raise exceptions for normal
                                        |
                              Lifted tree with new Provenance
 ```
+### Fold signature and example
 
+Canonical signature to remove ambiguity:
+
+```fsharp
+val fold :
+  ('acc -> ARecord<'a> -> 'acc) ->
+  ('acc -> BRecord<'b> -> 'acc) ->
+  'acc ->
+  Lifted<'a,'b> ->
+  'acc
+```
+One-line example showing accumulator ordering (counts A nodes by visiting root-first):
+
+```fsharp
+// counts A nodes in root-first, left-to-right order
+let countA = fold (fun s _ -> s + 1) (fun s _ -> s) 0 nested
+```
 ## Case Law (see `.fsx`)
 This script is a runnable demonstration that exercises the Lifted primitives and their provenance semantics. It builds sample provenance records and payload cells, composes nested Lifted values, and exercises traversal, extraction, metrics, printing, and provenance reassignment.
 
