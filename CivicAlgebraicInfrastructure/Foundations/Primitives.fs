@@ -117,14 +117,14 @@ module Provenance =
     let rec EmitSourceWithLineageTrail (p: Provenance) : string =
         let basis = $"[Step {p.Step}] Source: {p.SourceName}"
         match p.Step, p.Lineage with
-        | 1, _ -> $"ExtractSourceNameWithLineage: {basis}"
-        | _, [] -> $"ExtractSourceNameWithLineage: {basis} → No deeper lineage"
+        | 1, _ -> $"Extract Source Name With Lineage: {basis}"
+        | _, [] -> $"Extract Source Name With Lineage: {basis} → No deeper lineage"
         | _, lineage ->
             let trail =
                 lineage
                 |> List.map EmitSourceWithLineageTrail
                 |> String.concat "\n→ "
-            $"ExtractSourceNameWithLineage: {basis}\n→ {trail}"
+            $"Extract Source Name With Lineage: {basis}\n→ {trail}"
 
     /// <summary>
     /// Find and return the first provenance record in the lineage with Step = 1 (original source).

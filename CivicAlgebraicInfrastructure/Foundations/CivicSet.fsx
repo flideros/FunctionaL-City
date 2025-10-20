@@ -404,6 +404,6 @@ let CollapsedToConcrete =
     | None -> []
 
 printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
-printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
+// printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed.Value)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
