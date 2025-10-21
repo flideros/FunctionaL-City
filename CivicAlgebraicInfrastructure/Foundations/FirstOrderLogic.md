@@ -141,6 +141,42 @@ Quantified { Bound = ∀x; Body = (P(x) → Q(x)) }
         Formula.Quantified
 ```
 
+## Glossary
+
+The following terms define key civic primitives used throughout this ordinance. 
+
+### Formula<'Symbol'>
+> **Definition**: A recursive civic envelope for symbolic propositions, built from atomic formulas, connectives, and quantifiers.  
+>  
+> **Signage Overlay**:  
+> `Formula<'Symbol'>` is the zoning charter for logical reasoning. It scaffolds remix-safe propositions, symbolic nesting, and audit overlays. 
+
+### ConnectiveKind
+> **Definition**: An enum of civic-native logical operators, including both primitive and derived connectives.  
+>  
+> **Variants**:
+> - Primitive: ¬, ∧, ∨, →
+> - Derived: ↔, ⊕, ↑, ↓, ⊙, ⊼, ⇍, ⊭, ≢  
+>  
+> **Signage Overlay**:  
+> `ConnectiveKind` is the symbolic signage registry. It scaffolds civic-native reasoning, remix dialects, and onboarding clarity. Each connective is lawful, narratable, and remix-safe.
+
+### FOLMetadata
+> **Definition**: A civic signage record annotating formulas with decidability, enumerability, and system-level affordances.  
+>  
+> **Fields**:
+> - `Decidability`: Decidable, SemiDecidable, Undecidable  
+> - `Enumerability`: Enumerable, NonEnumerable  
+>  
+> **Signage Overlay**:  
+> `FOLMetadata` is the audit overlay for symbolic propositions. It scaffolds remix inspection, system-level reasoning, and ordinance guarantees. Every metadata tag is narratable and remix-worthy.
+
+### Quantified<'Symbol'>
+> **Definition**: A civic wrapper for formulas with bound variables, using ∀ and ∃ quantifiers.  
+>  
+> **Signage Overlay**:  
+> `Quantified<'Symbol'>` scaffolds lawful binding, substitution hygiene, and symbolic zoning. It ensures civic-native clarity for remixers and preserves variable scope as a legacy artifact.
+
 ---
 
 ## Case Law (see `.fsx`)
