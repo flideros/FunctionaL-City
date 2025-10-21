@@ -103,6 +103,27 @@ type CivicSetMetadataItem =
 │ EquivalentTo     │
 └──────────────────┘
 ```
+
+## 🏷️ Glossary
+
+### CivicSetMetadataItem
+> **Definition**: A union of signage overlays annotating a civic set with logical, set-theoretic, and provenance metadata.  
+> **Variants**: `SetTheoretic`, `FOL`, `Provenance`, `Tag`, `Note`, `Custom`  
+> **Signage Overlay**: CivicSetMetadataItem scaffolds remix inspection, audit overlays, and symbolic lineage guarantees.
+
+### SetProvenance
+> **Definition**: A symbolic record of how a civic set was derived, constructed, or imported.  
+> **Variants**: `FromUnion`, `FromConstructor`, `FromAxiom`, `FromSymbolic`, etc.  
+> **Signage Overlay**: SetProvenance is the civic ancestry trail. It scaffolds timestamp semantics and lineage inspection.
+
+### ICivicSet<'Concrete,'Symbolic'>
+> **Definition**: A civic interface for symbolic sets with metadata, provenance, and logical overlays.  
+> **Signage Overlay**: ICivicSet is the zoning charter for symbolic set infrastructure. It scaffolds lawful containment, symbolic reasoning, and audit overlays.
+
+### unionLiftedSets
+> **Definition**: A constructor that lifts two civic sets into a symbolic union with derived provenance and optional formula.  
+> **Signage Overlay**: unionLiftedSets scaffolds remix-safe set composition, symbolic lineage, and onboarding clarity.
+
 ---
 
 ## Case Law (see `.fsx`)
