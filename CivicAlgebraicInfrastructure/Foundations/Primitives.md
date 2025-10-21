@@ -239,6 +239,46 @@ One-line example showing accumulator ordering (counts A nodes by visiting root-f
 // counts A nodes in root-first, left-to-right order
 let countA = fold (fun s _ -> s + 1) (fun s _ -> s) 0 nested
 ```
+
+## Glossary
+
+The following termss define key civic primitives used throughout this ordinance. 
+
+### Lifted
+> **Definition**: A civic union type representing payloads with optional provenance.  
+> **Variants**:
+> - `A of LiftedCell<'A>`: Civic payload of type `'A`.
+> - `B of LiftedCell<'B>`: Civic payload of type `'B`.
+> - `Nested of LiftedCell<Lifted<'A,'B>>`: Recursively nested civic payload.
+>  
+> **Signage Overlay**:  
+> Lifted is the zoning envelope for payloads and provenance. It scaffolds remix-safe traversal, nesting, and audit overlays. 
+
+### Provenance
+> **Definition**: A civic record capturing the lineage, timestamp, and derivation of a payload.  
+> **Fields**:
+> - `SourceName`: Origin artifact or ordinance.
+> - `Step`: Derivation index (e.g., Step 1).
+> - `Timestamp`: Civic moment of creation.
+> - `Note`: Optional signage annotation.
+> - `Lineage`: List of parent Provenance records.
+>  
+> **Signage Overlay**:  
+> Provenance is the civic passport of a payload. It scaffolds audit trails, remix inspection, and timestamp guarantees. Immutable once assigned, it empowers remixers to trace civic lineage.
+
+### Step 1
+> **Definition**: The initial derivation index assigned to a payload with no prior lineage.  
+>  
+> **Signage Overlay**:  
+> Step 1 is the civic birthmark of a payload. It signals origin without inheritance, scaffolding timestamp semantics and remix-safe onboarding. All derived payloads increment from Step 1.
+
+### Lineage Trail
+> **Definition**: A recursive list of Provenance records representing the ancestry of a payload.  
+>  
+> **Signage Overlay**:  
+> The Lineage Trail is the civic ancestry map. It scaffolds remix inspection, ordinance tracing, and provenance guarantees.
+
+
 ## Case Law (see `.fsx`)
 This script is a runnable demonstration that exercises the Lifted primitives and their provenance semantics. It builds sample provenance records and payload cells, composes nested Lifted values, and exercises traversal, extraction, metrics, printing, and provenance reassignment.
 

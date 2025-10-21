@@ -367,7 +367,7 @@ let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
         member _.Implies _ = false
         member _.EquivalentTo _ = false }
 
-let setA = makeSimpleSet "Nat" [1;2;3]
+let setA = makeSimpleSet "Nat" [1;2;3;4;5]
 let setB = makeSimpleSet "Odds" [1;3;5;7;9]
 
 let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB

@@ -6,14 +6,14 @@ open System
 /// Provenance record type used across civic artifacts to record origin, step, human note, timestamp, and explicit lineage.
 /// </summary>
 /// <signage>
-/// - SourceName: human-friendly origin label used on signage (e.g., "SensorA", "UserInput").
+/// - SourceName: human-friendly origin label used on signage (e.g., "SensorA", "UserInput", "Euclid").
 /// - Step: integer generation step; Step 1 marks original sources; derived steps use mkDerived policy.
 /// - Timestamp: optional UTC time for when the provenance was recorded.
 /// - Note: short human-readable message used on onboarding signage and audit overlays.
 /// - Lineage: explicit list of parent Provenance entries forming the provenance trail.
 type Provenance = 
     { /// Clear, human-readable name of the origin used in signage.
-      SourceName: string; // Clear, human-readable name of the origin (e.g., "SensorA", "UserInput", "Socrotes").
+      SourceName: string; 
       /// Generation step number; 1 indicates original source.
       Step: int;
       /// UTC timestamp for record creation when available.
