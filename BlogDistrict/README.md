@@ -13,6 +13,7 @@ Welcome to **BlogDistrict**, the public square of FunctionaL City. This district
 | [Civic Report Leads to Civic Union](Posts/251013_CivicReportLeadsToCivicUnion.md) | How FunctionaL City formalized its first narratable union through symbolic inspection and provenance scaffolding |
 | [From Reflection to Representation. Why Our Mayor Outlawed obj Probing](Posts/251010_FromReflectiontoRepresentation.md) | Every `obj` is a `Type` and every `Type` is a first class citizen. |
 | [Why FunctionaL City Exists](Posts/250925_MessageFromTheMayor.md) | Foundational charter introducing the civic-native paradigm and the metaphor of code as infrastructure. |
+
 ---
 
 
