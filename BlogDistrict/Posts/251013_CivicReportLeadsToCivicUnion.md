@@ -98,7 +98,7 @@ Now that we have proof of concept, it's time to take the `CivicSet` from 35% to 
 
 ## 📬 Future *Message from the Mayor* Dispatches
 
-Keep an eye out for future editions of *Message fron the Mayor* as the city grows and random musings develop along the way. In the meantime, keep an eye on the BlogDistrict [**README.md**](../README.md) for updates.
+Keep an eye out for future editions of *Message from the Mayor* as the city grows and random musings develop along the way. In the meantime, keep an eye on the BlogDistrict [**README.md**](../README.md) for updates.
 
 ---
 

@@ -381,8 +381,8 @@ unionSet.Metadata |> Seq.iter (function Tag t -> printfn " Tag: %s" t | Provenan
 printfn "Union elements (lifted sets):"
 for e in unionSet.Elements do
     match e with
-    | A cell -> printfn " A -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance
-    | B cell -> printfn " B -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance
+    | A cell -> printfn " A -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance.Value.SourceName
+    | B cell -> printfn " B -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance.Value.SourceName
     | Nested cell -> printfn " Nested -> %A" cell
 
 // Flatten members for demonstration
