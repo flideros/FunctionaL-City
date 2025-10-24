@@ -108,6 +108,12 @@ type ICivicSet<'Concrete,'Symbolic> =
     /// Logical overlay: equivalence relation to another civic set.
     abstract member EquivalentTo : ICivicSet<'Concrete,'Symbolic> -> bool
 
+type HomotypicUnion<'A,'S> = ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'A,'S>>,'S>
+type HeterotypicUnion<'A,'B,'S> = ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S>
+type CivicUnion<'A,'B,'S> = 
+    | Homotypic of HomotypicUnion<'A,'S>
+    | Heterotypic of HeterotypicUnion<'A,'B,'S>
+
 module CivicSetConstructors =
     /// <summary>
     /// Extracts the first Provenance entry from metadata if present.
@@ -324,7 +330,15 @@ module CivicSetConstructors =
             member _.Metadata : CivicSetMetadataItem list = [ Tag "LiftedUnion" ] @ [SetTheoretic mergedSetTheoreticMetadata] @ [ Provenance unionProv ]
             member _.IsClosedUnder _ = false
             member _.Implies _ = false
-            member _.EquivalentTo _ = false }
+            member _.EquivalentTo _ = false }        
+
+    let wrapCivicUnion<'A,'B,'S when 'S :> obj>
+        (liftedSet: ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S>)
+        : CivicUnion<'A,'B,'S> =
+
+        match liftedSet with
+        | :? HomotypicUnion<'A,'S> as a -> Homotypic a
+        | _ -> Heterotypic liftedSet
 
     /// <summary>
     /// Recursively collect Choice<'A,'B> elements from a nested Lifted payload where the Lifted
@@ -379,14 +393,14 @@ module CivicSetConstructors =
     /// - De-duplication uses comparer if requested; otherwise elements concatenated in original order.
     /// Emits Metadata: Tag "CollapsedFromLiftedUnion" and derived Provenance step "collapse lifted to concrete".
     /// </signage>
-    let collapseLiftedToConcrete<'T,'S when 'S :> obj>
+    let private collapseLiftedToConcrete<'T,'S when 'S :> obj>
         (deDuplicate: bool)
         (collapseWhenProvenanceDiffers: bool)
-        (liftedSet: ICivicSet<Lifted<ICivicSet<'T,'S>, ICivicSet<'T,'S>>,'S>)
+        (liftedSet: HomotypicUnion<'T,'S>)
         : option<ICivicSet<'T,'S>> =
 
         // collect underlying sets (expecting A and B branches)
-        let parts =
+        let parts =            
             liftedSet.Elements
             |> Seq.choose (function
                 | A c -> Some (c.Value, c.Provenance)
@@ -488,6 +502,18 @@ module CivicSetConstructors =
                         member _.EquivalentTo _ = false }
 
                 Some concrete        
+        
+    let tryCollapseCivicUnionToConcrete<'A,'B,'S when 'S :> obj>
+        (deDuplicate: bool)
+        (collapseWhenProvenanceDiffers: bool)
+        (liftedSet: CivicUnion<'A,'B,'S>)
+        : option<ICivicSet<'A,'S>> =
+
+        match liftedSet with
+        | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
+        | Heterotypic b-> None
+        
+ 
 
 module Operations =
     

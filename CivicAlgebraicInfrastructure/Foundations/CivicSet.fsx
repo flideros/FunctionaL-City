@@ -284,42 +284,45 @@ let displayNote (metadata: CivicSetMetadataItem list) =
 displayNote integers.Metadata
 
 /// Generate a civic inspector report for a given CivicSet
-let civicSetInspectorReport (set: ICivicSet<'C,'S>) : string =
-    let symbol     = set.Symbol |> Option.defaultValue "∅"
-    let formulaStr = 
-        match box set.Formula with
-        | :? Option<Formula<Symbol>> as fOpt ->
-            fOpt
-            |> Option.map FormulaPrinter.formulaToString
-            |> Option.defaultValue "—"
-        | _ -> "—"
-    let cardinality, countability, orderType =
-        set.Metadata
-        |> List.choose (function SetTheoretic m -> Some m | _ -> None)
-        |> List.tryHead
-        |> Option.map (fun m -> m.Cardinality, m.Countability, m.OrderType)
-        |> Option.defaultValue (None, None, None)
+let civicSetInspectorReport (set: ICivicSet<'C,'S> option) : string =
+    match set with
+    | None -> "Nothing to report"
+    | Some set ->
+        let symbol     = set.Symbol |> Option.defaultValue "∅"
+        let formulaStr = 
+            match box set.Formula with
+            | :? Option<Formula<Symbol>> as fOpt ->
+                fOpt
+                |> Option.map FormulaPrinter.formulaToString
+                |> Option.defaultValue "—"
+            | _ -> "—"
+        let cardinality, countability, orderType =
+            set.Metadata
+            |> List.choose (function SetTheoretic m -> Some m | _ -> None)
+            |> List.tryHead
+            |> Option.map (fun m -> m.Cardinality, m.Countability, m.OrderType)
+            |> Option.defaultValue (None, None, None)
 
-    let provenance =
-        set.Metadata
-        |> List.choose (function Provenance p -> Some p | _ -> None)
-        |> List.tryHead
-        |> Option.map Provenance.describe
-        |> Option.defaultValue "No provenance record found."
+        let provenance =
+            set.Metadata
+            |> List.choose (function Provenance p -> Some p | _ -> None)
+            |> List.tryHead
+            |> Option.map Provenance.describe
+            |> Option.defaultValue "No provenance record found."
 
-    let note =
-        set.Metadata
-        |> List.choose (function Note n -> Some n | _ -> None)
-        |> List.tryHead
-        |> Option.defaultValue "No civic signage note found."
+        let note =
+            set.Metadata
+            |> List.choose (function Note n -> Some n | _ -> None)
+            |> List.tryHead
+            |> Option.defaultValue "No civic signage note found."
 
-    let minStr = set.Min |> Option.map string |> Option.defaultValue "—"
-    let maxStr = set.Max |> Option.map string |> Option.defaultValue "—"
-    let countabilityStr = countability |> Option.map string |> Option.defaultValue "—"
-    let cardinalityStr  = cardinality |> Option.map string |> Option.defaultValue "—"
-    let orderStr        = orderType |> Option.map string |> Option.defaultValue "—"
+        let minStr = set.Min |> Option.map string |> Option.defaultValue "—"
+        let maxStr = set.Max |> Option.map string |> Option.defaultValue "—"
+        let countabilityStr = countability |> Option.map string |> Option.defaultValue "—"
+        let cardinalityStr  = cardinality |> Option.map string |> Option.defaultValue "—"
+        let orderStr        = orderType |> Option.map string |> Option.defaultValue "—"
 
-    $"""
+        $"""
 🧾 CivicSet Inspector Report
 ────────────────────────────
 🆔 Symbol:  {symbol}
@@ -339,12 +342,12 @@ let civicSetInspectorReport (set: ICivicSet<'C,'S>) : string =
 📝 Civic Note:
 {note}
 """
-printfn "%s" (civicSetInspectorReport naturalNumbers)
+printfn "%s" (civicSetInspectorReport (Some naturalNumbers))
 
 // ---------------------------
 // Sample ICivicSet implementations for testing
 // ---------------------------
-let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
+let makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
     
     { new ICivicSet<int, Symbol> with
         member _.Symbol = Some name
@@ -367,10 +370,60 @@ let makeSimpleSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
         member _.Implies _ = false
         member _.EquivalentTo _ = false }
 
-let setA = makeSimpleSet "Nat" [1;2;3;4;5]
-let setB = makeSimpleSet "Odds" [1;3;5;7;9]
+let makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int, Symbol> =
+    
+    { new ICivicSet<int, Symbol> with
+        member _.Symbol = Some name
+        member _.Formula = None
+        member _.Contains x = List.contains x vals
+        member _.Elements = vals :> seq<int>
+        member _.Compare = Some compare
+        member _.Min = if List.isEmpty vals then None else Some (List.min vals)
+        member _.Max = if List.isEmpty vals then None else Some (List.max vals)
+        member _.Metadata = [ Tag $"SimpleSet:{name}"; 
+                              SetTheoretic { Cardinality  = Some (Finite vals.Length)
+                                             Countability = Some Countable
+                                             OrderType    = Some TotalOrder }
+                              Provenance { SourceName = name; 
+                                           Step = 2; 
+                                           Timestamp = Some DateTime.UtcNow; 
+                                           Note = "original"; 
+                                           Lineage = [natProvenance] } ]
+        member _.IsClosedUnder _ = false
+        member _.Implies _ = false
+        member _.EquivalentTo _ = false }
 
-let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB
+let makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<string, Symbol> =
+    
+    { new ICivicSet<string, Symbol> with
+        member _.Symbol = Some name
+        member _.Formula = None
+        member _.Contains x = List.contains x vals
+        member _.Elements = vals :> seq<string>
+        member _.Compare = Some compare
+        member _.Min = if List.isEmpty vals then None else Some (List.min vals)
+        member _.Max = if List.isEmpty vals then None else Some (List.max vals)
+        member _.Metadata = [ Tag $"SimpleSet:{name}"; 
+                              SetTheoretic { Cardinality  = Some (Finite vals.Length)
+                                             Countability = Some Countable
+                                             OrderType    = Some TotalOrder } // lexicographical order, also known as dictionary order. 
+                              Provenance { SourceName = name; 
+                                           Step = 1; 
+                                           Timestamp = Some DateTime.UtcNow; 
+                                           Note = "Strings are finite and ordered sequences of arbitrary symbols drawn from a finite, non-empty set."; 
+                                           Lineage = [] } ]
+        member _.IsClosedUnder _ = false
+        member _.Implies _ = false
+        member _.EquivalentTo _ = false }
+
+let setA = makeSimpleNaturalSet "Nat" [1;2;3;4;5]
+let setB = makeSimpleNaturalSet2 "Odds" [1;3;5;7;9]
+let setC = makeSimpleStringSet "Odds" ["A";"B";"C"]
+
+let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB 
+let civicSet1 = CivicSetConstructors.wrapCivicUnion unionSet 
+let unionSetHetero = CivicSetConstructors.unionLiftedSets "Nat" "String" setA setC
+let civicSet2 = CivicSetConstructors.wrapCivicUnion unionSetHetero 
 
 // ---------------------------
 // Inspect results
@@ -395,7 +448,7 @@ let flattened =
         | Nested _ -> Seq.empty)
 
 printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
-let collapsed = CivicSetConstructors.collapseLiftedToConcrete true false unionSet
+let collapsed = CivicSetConstructors.tryCollapseCivicUnionToConcrete true false civicSet1
 
 // Collapse to concrete example
 let CollapsedToConcrete =    
@@ -405,5 +458,19 @@ let CollapsedToConcrete =
 
 printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 // printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
-printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed.Value)
+printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
+
+
+let areSameBaseType (t1: Lifted<ICivicSet<'Type1,Symbol>,ICivicSet<'Type2,Symbol>>) (t2: Lifted<ICivicSet<'Type1,Symbol>,ICivicSet<'Type2,Symbol>>) = 
+    let a = Lifted.collectA t1 @ Lifted.collectA t2
+    let b = Lifted.collectB t1 @ Lifted.collectB t2
+    match a.IsEmpty && b.IsEmpty with 
+    | false -> a.Head.GetType() = b.Head.GetType()
+    | true -> false
+
+printfn "%b" (areSameBaseType (Seq.item 0 unionSet.Elements) (Seq.item 1 unionSet.Elements))
+
+//printfn "%s" ((Seq.item 0 unionSet.Elements).GetType().ToString())
+//printfn "%s" ((Lifted.collectA (Seq.item 0 unionSet.Elements)).Head.GetType().ToString())
+//Lifted.collectA (Seq.item 0 unionSet.Elements)
