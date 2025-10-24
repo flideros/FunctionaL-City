@@ -170,6 +170,23 @@ type Symbol =
       Kind  : SymbolKind
       Arity : int option }   // only meaningful for functions/predicates
 
+/// <summary>
+/// TODO: placeholder for external symbolic engine adapters.
+/// Keep simple now; expand with SymbolBox/registry later.
+/// </summary>
+type ISymbolAdapter =
+    /// <summary>Unique adapter kind string used for registration.</summary>
+    abstract member Kind : string
+    /// <summary>Try convert a boxed runtime value into the canonical Symbol.</summary>
+    abstract member TryUnbox : obj -> Symbol option
+    /// <summary>Try box a canonical Symbol into the adapter's runtime representation.</summary>
+    abstract member TryBox : Symbol -> obj option
+
+/// TODO: mark as a future extension point for runtime adapters and document expected semantics:
+/// - Implementations should be idempotent for round-trip box/unbox when possible.
+/// - Must not throw; return None on failure to unbox/box.
+/// - Adapter.Kind should be stable and versioned when evolving.
+
 module Formulae =
 
     /// <summary>

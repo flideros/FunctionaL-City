@@ -27,7 +27,7 @@ let natProvenance : Provenance =
       Lineage = [] }
 
 let naturalNumbers =
-    { new ICivicSet<int,Symbol> with
+    { new ICivicSet<int> with
         member _.Symbol       = Some "\u2115"   // ℕ
         member _.Formula      = Some natFormula
         member _.Contains n   = n >= 0
@@ -70,7 +70,7 @@ let intProvenance : Provenance =
       Lineage = [] }
 
 let integers =
-    { new ICivicSet<int,Symbol> with
+    { new ICivicSet<int> with
         member _.Symbol       = Some "\u2124"   // ℤ
         member _.Formula      = Some intFormula
         member _.Contains _   = true
@@ -139,7 +139,7 @@ let ratProvenance : Provenance =
       Lineage = [] }
 
 let rationals =
-    { new ICivicSet<Rational,Symbol> with
+    { new ICivicSet<Rational> with
         member _.Symbol       = Some "\u211A"   // ℚ
         member _.Formula      = Some rationalFormula
         member _.Contains r   = r.Den <> 0
@@ -186,7 +186,7 @@ let realProvenance : Provenance =
       Lineage = [] }
 
 let reals =
-    { new ICivicSet<float, Symbol> with
+    { new ICivicSet<float> with
         member _.Symbol       = Some "\u211D"   // ℝ
         member _.Formula      = Some realFormulaFOL
         member _.Contains _   = true
@@ -226,7 +226,7 @@ let complexFormulaFOL : Formula<Symbol> =
     }
 
 let complex =
-    { new ICivicSet<System.Numerics.Complex, Symbol> with
+    { new ICivicSet<System.Numerics.Complex> with
         member _.Symbol       = Some "\u2102"   // ℂ
         member _.Formula      = Some complexFormulaFOL
         member _.Contains _   = true
@@ -284,7 +284,7 @@ let displayNote (metadata: CivicSetMetadataItem list) =
 displayNote integers.Metadata
 
 /// Generate a civic inspector report for a given CivicSet
-let civicSetInspectorReport (set: ICivicSet<'C,'S> option) : string =
+let civicSetInspectorReport (set: ICivicSet<'C> option) : string =
     match set with
     | None -> "Nothing to report"
     | Some set ->
@@ -347,9 +347,9 @@ printfn "%s" (civicSetInspectorReport (Some naturalNumbers))
 // ---------------------------
 // Sample ICivicSet implementations for testing
 // ---------------------------
-let makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int, Symbol> =
+let makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int> =
     
-    { new ICivicSet<int, Symbol> with
+    { new ICivicSet<int> with
         member _.Symbol = Some name
         member _.Formula = None
         member _.Contains x = List.contains x vals
@@ -370,9 +370,9 @@ let makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int, Symbol
         member _.Implies _ = false
         member _.EquivalentTo _ = false }
 
-let makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int, Symbol> =
+let makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int> =
     
-    { new ICivicSet<int, Symbol> with
+    { new ICivicSet<int> with
         member _.Symbol = Some name
         member _.Formula = None
         member _.Contains x = List.contains x vals
@@ -393,9 +393,9 @@ let makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int, Symbo
         member _.Implies _ = false
         member _.EquivalentTo _ = false }
 
-let makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<string, Symbol> =
+let makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<string> =
     
-    { new ICivicSet<string, Symbol> with
+    { new ICivicSet<string> with
         member _.Symbol = Some name
         member _.Formula = None
         member _.Contains x = List.contains x vals
@@ -462,15 +462,4 @@ printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
 
 
-let areSameBaseType (t1: Lifted<ICivicSet<'Type1,Symbol>,ICivicSet<'Type2,Symbol>>) (t2: Lifted<ICivicSet<'Type1,Symbol>,ICivicSet<'Type2,Symbol>>) = 
-    let a = Lifted.collectA t1 @ Lifted.collectA t2
-    let b = Lifted.collectB t1 @ Lifted.collectB t2
-    match a.IsEmpty && b.IsEmpty with 
-    | false -> a.Head.GetType() = b.Head.GetType()
-    | true -> false
 
-printfn "%b" (areSameBaseType (Seq.item 0 unionSet.Elements) (Seq.item 1 unionSet.Elements))
-
-//printfn "%s" ((Seq.item 0 unionSet.Elements).GetType().ToString())
-//printfn "%s" ((Lifted.collectA (Seq.item 0 unionSet.Elements)).Head.GetType().ToString())
-//Lifted.collectA (Seq.item 0 unionSet.Elements)

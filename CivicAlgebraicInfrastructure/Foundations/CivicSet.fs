@@ -78,17 +78,16 @@ type CivicSetMetadataItem =
 /// Interface describing a civic set with both concrete and symbolic overlays.
 /// </summary>
 /// <typeparam name="Concrete">Element type exposed by the concrete set</typeparam>
-/// <typeparam name="Symbolic">Symbol type used in symbolic formulas (typically Symbol)</typeparam>
 /// <signage>
 /// ICivicSet is the primary contract for all civic set representations. Implementations
 /// should prefer to include Metadata entries with SetTheoretic and Provenance items
 /// to enable predictable merging and signage syntheses.
 /// </signage>  
-type ICivicSet<'Concrete,'Symbolic> =
+type ICivicSet<'Concrete> =
     /// Symbolic name for the set used in signage synthesis.
     abstract member Symbol : string option
     /// Optional symbolic formula describing the set (FOL overlay).
-    abstract member Formula : Formula<'Symbolic> option
+    abstract member Formula : Formula<Symbol> option
     /// Predicate testing membership of a concrete element.
     abstract member Contains : 'Concrete -> bool
     /// Elements sequence for enumeration, used by collapse and flatten operations.
@@ -102,17 +101,28 @@ type ICivicSet<'Concrete,'Symbolic> =
     /// Attached metadata signage artifacts.
     abstract member Metadata : CivicSetMetadataItem list
     /// Logical overlay: tests closedness under set operators.
-    abstract member IsClosedUnder : (ICivicSet<'Concrete,'Symbolic> -> ICivicSet<'Concrete,'Symbolic>) -> bool
+    abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> bool
     /// Logical overlay: implication relation to another civic set.
-    abstract member Implies : ICivicSet<'Concrete,'Symbolic> -> bool
+    abstract member Implies : ICivicSet<'Concrete> -> bool
     /// Logical overlay: equivalence relation to another civic set.
-    abstract member EquivalentTo : ICivicSet<'Concrete,'Symbolic> -> bool
+    abstract member EquivalentTo : ICivicSet<'Concrete> -> bool
 
-type HomotypicUnion<'A,'S> = ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'A,'S>>,'S>
-type HeterotypicUnion<'A,'B,'S> = ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S>
-type CivicUnion<'A,'B,'S> = 
-    | Homotypic of HomotypicUnion<'A,'S>
-    | Heterotypic of HeterotypicUnion<'A,'B,'S>
+/// <summary>
+/// Lifted union of homotypic civic sets (same concrete type).
+/// </summary>
+type HomotypicUnion<'A> = ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'A>>>
+
+/// <summary>
+/// Lifted union of heterotypic civic sets (different concrete types).
+/// </summary>
+type HeterotypicUnion<'A,'B> = ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>
+
+/// <summary>
+/// Tagged union wrapper used to represent lifted unions in the civic model.
+/// </summary>
+type CivicUnion<'A,'B> = 
+    | Homotypic of HomotypicUnion<'A>
+    | Heterotypic of HeterotypicUnion<'A,'B>
 
 module CivicSetConstructors =
     /// <summary>
@@ -242,7 +252,7 @@ module CivicSetConstructors =
     /// 2. If both have symbol names, build canonical quantified union from symbols.
     /// 3. If one side has a formula and the other a symbol, synthesize by combining membership and the formula.
     /// </signage>
-    let private synthesizeSymbolicUnion (a: ICivicSet<_,_>) (b: ICivicSet<_,_>) : Formula<Symbol> option =
+    let private synthesizeSymbolicUnion (a: ICivicSet<_>) (b: ICivicSet<_>) : Formula<Symbol> option =
         let fA = tryUnboxFormula a.Formula
         let fB = tryUnboxFormula b.Formula
         let sA = a.Symbol |> Option.map (fun n -> { Name = n; Kind = ConstantKind; Arity = None })
@@ -273,10 +283,10 @@ module CivicSetConstructors =
     /// - Provenance: derived from parents, step "union/lifted"
     /// - Metadata: merged SetTheoretic metadata computed from children
     /// </signage>
-    let unionLiftedSets<'A,'B,'S when 'S :> obj>
+    let unionLiftedSets<'A,'B>
         (aName: string) (bName: string)
-        (a: ICivicSet<'A,'S>) (b: ICivicSet<'B,'S>)
-        : ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S> =
+        (a: ICivicSet<'A>) (b: ICivicSet<'B>)
+        : ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>> =
 
         // parent provenance
         let pa = pickProvenanceFromSetMetadata a.Metadata
@@ -284,22 +294,22 @@ module CivicSetConstructors =
         let sharedSource = $"{aName} ∪ {bName}"
 
         // LiftedCell wrappers for both sets (derive provenance step from parents)
-        let cellA : LiftedCell<ICivicSet<'A,'S>> =
+        let cellA : LiftedCell<ICivicSet<'A>> =
             { Value = a
               Provenance = Some (Provenance.mkDerived "union(A-wrapper)" "union/lifted" [ pa ]) }
 
-        let cellB : LiftedCell<ICivicSet<'B,'S>> =
+        let cellB : LiftedCell<ICivicSet<'B>> =
             { Value = b
               Provenance = Some (Provenance.mkDerived $"union (B-wrapper)" "union/lifted" [ pb ]) }
 
-        let elementsSeq : seq<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>> = seq { yield A cellA; yield B cellB }
+        let elementsSeq : seq<Lifted<ICivicSet<'A>, ICivicSet<'B>>> = seq { yield A cellA; yield B cellB }
 
         // set theoretic metadata
         let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
         let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
         let mergedSetTheoreticMetadata = mergeSetTheoreticMetadata sa sb (Seq.length elementsSeq)
 
-        let containsImpl (z: Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>) : bool =
+        let containsImpl (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool =
             match z with
             | A c -> Object.ReferenceEquals(c.Value, a) || (c.Value.Symbol = a.Symbol)
             | B c -> Object.ReferenceEquals(c.Value, b) || (c.Value.Symbol = b.Symbol)
@@ -309,7 +319,7 @@ module CivicSetConstructors =
         let formulaSymbolicOpt = synthesizeSymbolicUnion a b
         let formulaOpt =
             match formulaSymbolicOpt with
-            | Some fs when typeof<'S> = typeof<Symbol> -> Some (box fs :?> Formula<'S>)
+            | Some fs -> Some (box fs :?> Formula<Symbol>)
             | _ -> None
 
         let unionSymbol =
@@ -319,11 +329,11 @@ module CivicSetConstructors =
 
         let unionProv = Provenance.mkDerived (unionSymbol |> Option.defaultValue sharedSource) "union/lifted" [ pa; pb ]
 
-        { new ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S> with
+        { new ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>> with
             member _.Symbol : string option = unionSymbol
-            member _.Formula : Formula<'S> option = formulaOpt
-            member _.Contains (z: Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>) : bool = containsImpl z
-            member _.Elements : seq<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>> = elementsSeq
+            member _.Formula : Formula<Symbol> option = formulaOpt
+            member _.Contains (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool = containsImpl z
+            member _.Elements : seq<Lifted<ICivicSet<'A>, ICivicSet<'B>>> = elementsSeq
             member _.Compare = None
             member _.Min = None
             member _.Max = None
@@ -332,12 +342,15 @@ module CivicSetConstructors =
             member _.Implies _ = false
             member _.EquivalentTo _ = false }        
 
-    let wrapCivicUnion<'A,'B,'S when 'S :> obj>
-        (liftedSet: ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S>)
-        : CivicUnion<'A,'B,'S> =
+    /// <summary>
+    /// Wraps a lifted union into the CivicUnion tagged representation.
+    /// </summary>
+    let wrapCivicUnion<'A,'B>
+        (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
+        : CivicUnion<'A,'B> =
 
         match liftedSet with
-        | :? HomotypicUnion<'A,'S> as a -> Homotypic a
+        | :? HomotypicUnion<'A> as a -> Homotypic a
         | _ -> Heterotypic liftedSet
 
     /// <summary>
@@ -346,8 +359,8 @@ module CivicSetConstructors =
     /// </summary>
     /// <returns>Sequence of Choice representing flattened members.</returns>
     /// <signage>Handles arbitrarily nested Nested branches so flattening signage can be emitted consistently.</signage>
-    let rec private recFlattenLifted<'A,'B,'S>
-        (lifted: Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>)
+    let rec private recFlattenLifted<'A,'B>
+        (lifted: Lifted<ICivicSet<'A>, ICivicSet<'B>>)
         : seq<Choice<'A,'B>> =
         seq {
             match lifted with
@@ -359,7 +372,7 @@ module CivicSetConstructors =
                     yield Choice2Of2 e
             | Nested cell ->
                 // cell.Value is another Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>
-                for inner in recFlattenLifted<'A,'B,'S> cell.Value do
+                for inner in recFlattenLifted<'A,'B> cell.Value do
                     yield inner
         }
 
@@ -369,15 +382,15 @@ module CivicSetConstructors =
     /// <param name="liftedSet">Lifted set instance.</param>
     /// <returns>Flattened sequence of members with branch tags.</returns>
     /// <signage>Used by collapse operations and for readable signage of nested unions.</signage>
-    let flattenLiftedMembers<'A,'B,'S>
-        (liftedSet: ICivicSet<Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>,'S>)
+    let flattenLiftedMembers<'A,'B>
+        (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
         : seq<Choice<'A,'B>> =
         liftedSet.Elements
         |> Seq.collect (fun top ->
             match top with
             | A c -> c.Value.Elements |> Seq.map Choice1Of2
             | B c -> c.Value.Elements |> Seq.map Choice2Of2
-            | Nested c -> recFlattenLifted<'A,'B,'S> c.Value)
+            | Nested c -> recFlattenLifted<'A,'B> c.Value)
 
     /// <summary>
     /// Collapse a lifted set-of-sets into a concrete ICivicSet<'T,'S> when both branches contain sets of the same element type 'T.
@@ -393,11 +406,11 @@ module CivicSetConstructors =
     /// - De-duplication uses comparer if requested; otherwise elements concatenated in original order.
     /// Emits Metadata: Tag "CollapsedFromLiftedUnion" and derived Provenance step "collapse lifted to concrete".
     /// </signage>
-    let private collapseLiftedToConcrete<'T,'S when 'S :> obj>
+    let private collapseLiftedToConcrete<'T>
         (deDuplicate: bool)
         (collapseWhenProvenanceDiffers: bool)
-        (liftedSet: HomotypicUnion<'T,'S>)
-        : option<ICivicSet<'T,'S>> =
+        (liftedSet: HomotypicUnion<'T>)
+        : option<ICivicSet<'T>> =
 
         // collect underlying sets (expecting A and B branches)
         let parts =            
@@ -479,7 +492,7 @@ module CivicSetConstructors =
                         |> tryMaxByCompare comparer
                     | _, _ -> None
 
-                let formulaOpt: Formula<'S> option = liftedSet.Formula
+                let formulaOpt: Formula<Symbol> option = liftedSet.Formula
 
                 let parentProvs = parts |> List.map snd
                 let sharedSource = match liftedSet.Symbol with Some s -> s | None -> "collapsed-lifted"
@@ -487,8 +500,8 @@ module CivicSetConstructors =
 
                 let symbol = liftedSet.Symbol
 
-                let concrete : ICivicSet<'T,'S> =
-                    { new ICivicSet<'T,'S> with
+                let concrete : ICivicSet<'T> =
+                    { new ICivicSet<'T> with
                         member _.Symbol = symbol
                         member _.Formula = formulaOpt
                         member _.Contains (x:'T) = parts |> Seq.exists (fun (set,_) -> set.Contains x)
@@ -503,11 +516,14 @@ module CivicSetConstructors =
 
                 Some concrete        
         
+    /// <summary>
+    /// Attempts to collapse any CivicUnion into a concrete civic set when the concrete types align; returns None when types are incompatible.
+    /// </summary>
     let tryCollapseCivicUnionToConcrete<'A,'B,'S when 'S :> obj>
         (deDuplicate: bool)
         (collapseWhenProvenanceDiffers: bool)
-        (liftedSet: CivicUnion<'A,'B,'S>)
-        : option<ICivicSet<'A,'S>> =
+        (liftedSet: CivicUnion<'A,'B>)
+        : option<ICivicSet<'A>> =
 
         match liftedSet with
         | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
@@ -521,5 +537,5 @@ module Operations =
     /// Determine whether set a is a subset of set b by checking every element of a is contained in b.
     /// </summary>
     /// <returns>True when a ⊆ b.</returns>
-    let isSubsetOf (a: ICivicSet<'T,'S>) (b: ICivicSet<'T,'S>) : bool =
+    let isSubsetOf (a: ICivicSet<'T>) (b: ICivicSet<'T>) : bool =
         a.Elements |> Seq.forall b.Contains
