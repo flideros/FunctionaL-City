@@ -124,6 +124,84 @@ type CivicUnion<'A,'B> =
     | Homotypic of HomotypicUnion<'A>
     | Heterotypic of HeterotypicUnion<'A,'B>
 
+/// Canonical empty instance
+module SetTheoreticMetadata =
+    let empty = { Cardinality = None; Countability = None; OrderType = None }
+
+    /// Builders that always return a record (composable)
+    let withCardinality c m = { m with Cardinality = Some c }
+    let withCountability ct m = { m with Countability = Some ct }
+    let withOrderType o m = { m with OrderType = Some o }
+
+    /// Cardinality merge rules:
+    /// - If both Finite, return Finite sum
+    /// - Aleph0 or Continuum dominates (choose broader)
+    /// - If kinds mismatch and neither is dominating, prefer the non-None; otherwise Other with a combined id
+    let private mergeCardinality 
+        (a: Cardinality option) 
+        (b: Cardinality option) 
+        (elementCount: int option) 
+        : Cardinality option =
+        
+        match a, b with
+        | None, None -> None
+        | Some x, None | None, Some x -> Some x
+        | Some (Finite n1), Some (Finite n2) -> Some (Finite (match elementCount with | Some c -> c | None -> n1 + n2))
+        | Some Aleph0, _ | _, Some Aleph0 -> Some Aleph0
+        | Some Continuum, _ | _, Some Continuum -> Some Continuum
+        | Some (Other s1), Some (Other s2) -> Some (Other (s1 + ";" + s2))
+        | Some (Other s), Some _ -> Some (Other s)
+        | Some _, Some (Other s) -> Some (Other s)
+
+    /// Countability: Uncountable dominates
+    let private mergeCountability (a: Countability option) (b: Countability option) : Countability option =
+        match a, b with
+        | None, None -> None
+        | Some x, None | None, Some x -> Some x
+        | Some Uncountable, _ | _, Some Uncountable -> Some Uncountable
+        | Some Countable, Some Countable -> Some Countable
+
+    /// OrderType: Unordered dominates; TotalOrder preserved only when both TotalOrder
+    let private mergeOrderType (a: OrderType option) (b: OrderType option) : OrderType option =
+        match a, b with
+        | None, None -> None
+        | Some x, None | None, Some x -> Some x
+        | Some Unordered, _ | _, Some Unordered -> Some Unordered
+        | Some TotalOrder, Some TotalOrder -> Some TotalOrder
+        | Some PartialOrder, Some PartialOrder -> Some PartialOrder
+        | Some TotalOrder, Some PartialOrder
+        | Some PartialOrder, Some TotalOrder -> Some PartialOrder
+
+    /// Merge two optional SetTheoreticMetadata values into one following dominance rules.
+    /// If both inputs are None -> None
+    let mergeSetTheoreticMetadata 
+        (left: SetTheoreticMetadata option) 
+        (right: SetTheoreticMetadata option) 
+        (elementCount: int option) 
+        : SetTheoreticMetadata =
+        match left, right with
+        | None, None -> empty
+        | _ ->
+            let l = defaultArg left empty
+            let r = defaultArg right empty
+            let merged = {
+                Cardinality = mergeCardinality l.Cardinality r.Cardinality (elementCount)
+                Countability = mergeCountability l.Countability r.Countability
+                OrderType = mergeOrderType l.OrderType r.OrderType
+            }
+            // If merged has no information, return None to preserve original optionality semantics
+            if merged.Cardinality.IsNone && merged.Countability.IsNone && merged.OrderType.IsNone then
+                empty
+            else
+                merged
+
+    /// Extract SetTheoreticMetadata from a metadata token list; returns option
+    let tryPickFrom (items: CivicSetMetadataItem list) : SetTheoreticMetadata option =
+        items
+        |> List.tryPick (function
+            | CivicSetMetadataItem.SetTheoretic s -> Some s
+            | _ -> None)
+
 module CivicSetConstructors =
     /// <summary>
     /// Extracts the first Provenance entry from metadata if present.
@@ -140,63 +218,6 @@ module CivicSetConstructors =
     /// <signage>Used during merges to preserve cardinality and ordering overlays.</signage>
     let private pickSetTheoreticMetadataFromSetMetadata (meta: CivicSetMetadataItem list) : SetTheoreticMetadata option =
         meta |> List.tryPick (function SetTheoretic st -> Some st | _ -> None)  
-
-    /// <summary>
-    /// Merge two optional SetTheoreticMetadata records into a single canonical record.
-    /// </summary>
-    /// <param name="a">First metadata option.</param>
-    /// <param name="b">Second metadata option.</param>
-    /// <param name="elementCount">Concrete element count to use for finite merges.</param>
-    /// <returns>Merged SetTheoreticMetadata.</returns>
-    /// <signage>
-    /// Merge policy (expressed as signage):
-    /// - Cardinality: if both finite, choose the concrete elementCount; continuum and aleph0 dominate where present.
-    /// - Countability: Uncountable dominates; otherwise Countable is assumed when unspecified.
-    /// - OrderType: Unordered dominates, partial order is next, total order only if both are total.
-    /// These rules become part of the civic ordinance for metadata merges.
-    /// </signage>
-    let mergeSetTheoreticMetadata
-        (a: SetTheoreticMetadata option)
-        (b: SetTheoreticMetadata option)
-        (elementCount: int)
-        : SetTheoreticMetadata =
-
-        // Merge cardinality: derive count if both are finite, otherwise symbolic comparison
-        let mergedCardinality =
-            match a, b with 
-            | Some metaA, Some metaB ->                 
-                match metaA.Cardinality, metaB.Cardinality with
-                | Some (Finite _), Some (Finite _) -> Some (Finite elementCount)
-                | Some Continuum, _ | _, Some Continuum -> Some Continuum
-                | Some Aleph0, _ | _, Some Aleph0 -> Some Aleph0
-                | Some (Other x), _ -> Some (Other x)
-                | _, Some (Other y) -> Some (Other y)
-                | _ -> None
-            | _ -> None
-
-        // Merge countability: Uncountable dominates
-        let mergedCountability =
-            match a, b with 
-            | Some metaA, Some metaB ->    
-                match metaA.Countability, metaB.Countability with
-                | Some Uncountable, _ | _, Some Uncountable -> Some Uncountable
-                | _ -> Some Countable
-            | _ -> None
-
-        // Merge order type: Unordered dominates, then Partial
-        let mergedOrderType =
-            match a, b with 
-            | Some metaA, Some metaB -> 
-                match metaA.OrderType, metaB.OrderType with
-                | Some Unordered, _ | _, Some Unordered -> Some Unordered
-                | Some PartialOrder, _ | _, Some PartialOrder -> Some PartialOrder
-                | Some TotalOrder, Some TotalOrder -> Some TotalOrder
-                | _ -> None
-            | _ -> None
-        
-        { Cardinality = mergedCardinality;
-          Countability = mergedCountability;
-          OrderType = mergedOrderType }
 
     /// <summary>
     /// Try to obtain the minimal element from a sequence using an optional comparer.
@@ -307,7 +328,7 @@ module CivicSetConstructors =
         // set theoretic metadata
         let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
         let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
-        let mergedSetTheoreticMetadata = mergeSetTheoreticMetadata sa sb (Seq.length elementsSeq)
+        let mergedSetTheoreticMetadata = SetTheoreticMetadata.mergeSetTheoreticMetadata sa sb (Some (Seq.length elementsSeq))
 
         let containsImpl (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool =
             match z with
@@ -474,9 +495,7 @@ module CivicSetConstructors =
                     let stData = pickSetTheoreticMetadataFromSetMetadata liftedSet.Metadata
                     match stData with
                     | Some d -> { d with Cardinality  = Some (Seq.length deDuplicated |> Finite) }
-                    | None -> { Cardinality  = None;
-                                Countability = None;
-                                OrderType = None }
+                    | None -> SetTheoreticMetadata.empty
 
                 let min = 
                     match deDuplicate, comparer with
@@ -528,8 +547,6 @@ module CivicSetConstructors =
         match liftedSet with
         | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
         | Heterotypic b-> None
-        
- 
 
 module Operations =
     
