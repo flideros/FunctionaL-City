@@ -124,8 +124,8 @@ type CivicUnion<'A,'B> =
     | Homotypic of HomotypicUnion<'A>
     | Heterotypic of HeterotypicUnion<'A,'B>
 
-/// Canonical empty instance
 module SetTheoreticMetadata =
+    /// Canonical empty instance
     let empty = { Cardinality = None; Countability = None; OrderType = None }
 
     /// Builders that always return a record (composable)
@@ -224,7 +224,7 @@ module CivicSetConstructors =
     /// </summary>
     /// <returns>Option minimal element or None when no comparer is available.</returns>
     /// <signage>Utility used by collapse operations to populate Min signage.</signage>
-    let tryMinByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
+    let private tryMinByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
         match compareOpt with
         | Some cmp -> items |> Seq.sortWith cmp |> Seq.tryHead
         | None -> None
@@ -234,7 +234,7 @@ module CivicSetConstructors =
     /// </summary>
     /// <returns>Option maximal element or None when no comparer is available.</returns>
     /// <signage>Utility used by collapse operations to populate Max signage.</signage>
-    let tryMaxByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
+    let private tryMaxByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
         match compareOpt with
         | Some cmp -> items |> Seq.sortWith (fun x y -> cmp y x) |> Seq.tryHead
         | None -> None
@@ -254,16 +254,6 @@ module CivicSetConstructors =
         Quantified { Bound = ForAll x; Body = Formulae.unionFormula inA inB }
 
     /// <summary>
-    /// Try to unbox a Formula<'S> to Formula<Symbol> when the generic instantiation equals Symbol.
-    /// </summary>
-    /// <returns>Some Formula<Symbol> when successful, otherwise None.</returns>
-    /// <signage>Helper used during symbolic synthesis to avoid unsafe casts across generics.</signage>
-    let private tryUnboxFormula<'S> (fOpt: Formula<'S> option) : Formula<Symbol> option =
-        match fOpt with
-        | Some f when typeof<'S> = typeof<Symbol> -> Some (unbox<Formula<Symbol>> (box f))
-        | _ -> None
-
-    /// <summary>
     /// Build a synthesized symbolic union using available formulas or symbols from two civic sets.
     /// </summary>
     /// <returns>Optional synthesized Formula<Symbol> representing the union.</returns>
@@ -274,8 +264,8 @@ module CivicSetConstructors =
     /// 3. If one side has a formula and the other a symbol, synthesize by combining membership and the formula.
     /// </signage>
     let private synthesizeSymbolicUnion (a: ICivicSet<_>) (b: ICivicSet<_>) : Formula<Symbol> option =
-        let fA = tryUnboxFormula a.Formula
-        let fB = tryUnboxFormula b.Formula
+        let fA = a.Formula
+        let fB = b.Formula
         let sA = a.Symbol |> Option.map (fun n -> { Name = n; Kind = ConstantKind; Arity = None })
         let sB = b.Symbol |> Option.map (fun n -> { Name = n; Kind = ConstantKind; Arity = None })
         match fA, fB, sA, sB with
@@ -538,7 +528,7 @@ module CivicSetConstructors =
     /// <summary>
     /// Attempts to collapse any CivicUnion into a concrete civic set when the concrete types align; returns None when types are incompatible.
     /// </summary>
-    let tryCollapseCivicUnionToConcrete<'A,'B,'S when 'S :> obj>
+    let tryCollapseCivicUnionToConcrete<'A,'B>
         (deDuplicate: bool)
         (collapseWhenProvenanceDiffers: bool)
         (liftedSet: CivicUnion<'A,'B>)
