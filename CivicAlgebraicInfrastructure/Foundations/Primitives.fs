@@ -46,6 +46,15 @@ type Lifted<'A,'B> =
     | B of LiftedCell<'B>
     | Nested of LiftedCell<Lifted<'A,'B>>
 
+/// <summary>
+/// Civic-native result contract: every result must carry provenance and signage.
+/// </summary>
+type ICivicResult<'T> =
+    abstract member Value : 'T option
+    abstract member Success : bool
+    abstract member Message : string option
+    abstract member Provenance : Provenance
+
 module Provenance =
     
     /// <summary>

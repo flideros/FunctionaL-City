@@ -74,6 +74,19 @@ type CivicSetMetadataItem =
     | Note of string
     | Custom of string * string // extension point
 
+type SetResult<'T>(value:'T option, success:bool, message:string option, provenance:Provenance) =
+    interface ICivicResult<'T> with
+        member _.Value = value
+        member _.Success = success
+        member _.Message = message
+        member _.Provenance = provenance
+
+    /// Convenience constructors
+    static member Success(value:'T, ?msg, ?prov) =
+        SetResult(Some value, true, msg, defaultArg prov Provenance.empty)
+    static member Failure(msg:string, ?prov) =
+        SetResult(None, false, Some msg, defaultArg prov Provenance.empty)
+
 /// <summary>
 /// Interface describing a civic set with both concrete and symbolic overlays.
 /// </summary>
@@ -101,11 +114,11 @@ type ICivicSet<'Concrete> =
     /// Attached metadata signage artifacts.
     abstract member Metadata : CivicSetMetadataItem list
     /// Logical overlay: tests closedness under set operators.
-    abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> bool
+    abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> SetResult<bool>
     /// Logical overlay: implication relation to another civic set.
-    abstract member Implies : ICivicSet<'Concrete> -> bool
+    abstract member Implies : ICivicSet<'Concrete> -> SetResult<bool>
     /// Logical overlay: equivalence relation to another civic set.
-    abstract member EquivalentTo : ICivicSet<'Concrete> -> bool
+    abstract member EquivalentTo : ICivicSet<'Concrete> -> SetResult<bool>
 
 /// <summary>
 /// Lifted union of homotypic civic sets (same concrete type).
