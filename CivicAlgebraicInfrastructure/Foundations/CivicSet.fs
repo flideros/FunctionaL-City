@@ -114,11 +114,11 @@ type ICivicSet<'Concrete> =
     /// Attached metadata signage artifacts.
     abstract member Metadata : CivicSetMetadataItem list
     /// Logical overlay: tests closedness under set operators.
-    abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> SetResult<bool>
+    abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> bool//SetResult<bool>
     /// Logical overlay: implication relation to another civic set.
-    abstract member Implies : ICivicSet<'Concrete> -> SetResult<bool>
+    abstract member Implies : ICivicSet<'Concrete> -> bool//SetResult<bool>
     /// Logical overlay: equivalence relation to another civic set.
-    abstract member EquivalentTo : ICivicSet<'Concrete> -> SetResult<bool>
+    abstract member EquivalentTo : ICivicSet<'Concrete> -> bool//SetResult<bool>
 
 /// <summary>
 /// Lifted union of homotypic civic sets (same concrete type).
@@ -352,6 +352,8 @@ module CivicSetConstructors =
             | _ -> None
 
         let unionProv = Provenance.mkDerived (unionSymbol |> Option.defaultValue sharedSource) "union/lifted" [ pa; pb ]
+
+
 
         { new ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>> with
             member _.Symbol : string option = unionSymbol
