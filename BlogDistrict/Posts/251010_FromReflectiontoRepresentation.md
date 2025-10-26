@@ -63,6 +63,19 @@ These helpers are civic-native. They empower remixers to inspect, transform, and
 This transition wasn’t just technical—it was civic. We moved from runtime guessing to type-driven citizenship. From surveillance to stewardship. From `obj` to ordinance.
 The mayor’s veto wasn’t a rejection of progress—it was a call to lawful infrastructure.
 
+## Crosslinks
+*City Limits*
+- [🏛️ FunctionaL City — City Hall](../../README.md)
+
+*Primitives ordinance book.*
+- [📘 Foundations/Primitives.md](../../CivicAlgebraicInfrastructure/Foundations/Primitives.md)
+
+*First Order Logic ordinance book.*
+- [📘 Foundations/FirstOrderLogic.md](../../CivicAlgebraicInfrastructure/Foundations/FirstOrderLogic.md)
+  
+*Civic Set ordinance book.*
+- [📘 Foundations/CivicSet.md](../../CivicAlgebraicInfrastructure/Foundations/CivicSet.md)
+
 ## 📬 Future *Message from the Mayor* Dispatches
 
 Keep an eye out for future editions of *Message from the Mayor* as the city grows and random musings develop along the way. In the meantime, keep an eye on the BlogDistrict [**README.md**](../README.md) for updates.

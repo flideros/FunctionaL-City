@@ -418,7 +418,7 @@ let makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<string> =
 
 let setA = makeSimpleNaturalSet "Nat" [1;2;3;4;5]
 let setB = makeSimpleNaturalSet2 "Odds" [1;3;5;7;9]
-let setC = makeSimpleStringSet "Odds" ["A";"B";"C"]
+let setC = makeSimpleStringSet "String" ["A";"B";"C"]
 
 let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB 
 let civicSet1 = CivicSetConstructors.wrapCivicUnion unionSet 
@@ -458,6 +458,7 @@ let CollapsedToConcrete =
 
 printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 // printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
+
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
 

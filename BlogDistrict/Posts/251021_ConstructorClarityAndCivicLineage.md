@@ -107,6 +107,19 @@ The Inspector Report notes: No civic signage note found. That’s a narratible i
 
 This empowers remixers to annotate lineage, propose signage alternatives, and extend civic-native documentation. Constructors become onboarding artifacts, not just technical steps.
 
+## Crosslinks
+*City Limits*
+- [🏛️ FunctionaL City — City Hall](../../README.md)
+
+*Primitives ordinance book.*
+- [📘 Foundations/Primitives.md](../../CivicAlgebraicInfrastructure/Foundations/Primitives.md)
+
+*First Order Logic ordinance book.*
+- [📘 Foundations/FirstOrderLogic.md](../../CivicAlgebraicInfrastructure/Foundations/FirstOrderLogic.md)
+  
+*Civic Set ordinance book.*
+- [📘 Foundations/CivicSet.md](../../CivicAlgebraicInfrastructure/Foundations/CivicSet.md)
+
 ## 📬 Future *Message from the Mayor* Dispatches
 
 Keep an eye out for future editions of *Message from the Mayor* as the city grows and random musings develop along the way. In the meantime, keep an eye on the BlogDistrict [**README.md**](../README.md) for updates.

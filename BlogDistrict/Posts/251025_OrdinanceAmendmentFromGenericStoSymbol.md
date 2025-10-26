@@ -2,13 +2,15 @@
 
 Every city evolves through amendments and ordinances, and FunctionaL City is no different. What began as a flexible but opaque foundation has now been reshaped into a narratable civic infrastructure—where symbols are first-class citizens and every ordinance leaves a traceable lineage.
 
-This post records a major amendment—the retirement of `'S` in favor of a **concrete** `Symbol` **type**—and outlines the roadmap ahead: scaffolding set logic overlays, defining lawful collapse semantics, and expanding the set-theoretic infrastructure. Think of it as both a council record and an invitation: a chance for remixers to see where the city has been, and to help shape where it goes next.
+This post records a major amendment—the retirement of `'S` in favor of a **concrete `Symbol` type**—and outlines the roadmap ahead: scaffolding set logic overlays, defining lawful collapse semantics, and expanding the set-theoretic infrastructure. Think of it as both a council record and an invitation: a chance for remixers to see where the city has been, and to help shape where it goes next. 
+
+
 
 ## 🏛️ Ordinance Amendment: From 'S to Symbol
 
 ### 📜 Context
 
-In the early drafts of CivicSet and FirstOrderLogic, symbolic placeholders were represented by a type variable `'S`. This gave flexibility, but it also left remixers without clear signage: what is a symbol, and how should it behave across ordinances? 
+In the early drafts of **CivicSet** and **FirstOrderLogic**, symbolic placeholders were represented by a type variable `'S`. This gave flexibility, but it also left remixers without clear signage: what is a symbol, and how should it behave across ordinances? 
 
 The `FirstOrderLogic.fs` code has proven to be quite capable at symbolic representation of logic. The proven capability of `FirstOrderLogic.fs` in symbolic reasoning justified the promotion of `Symbol` to a first-class civic citizen.
 
@@ -24,7 +26,7 @@ We’ve now eliminated `'S` in favor of a **concrete** `Symbol` **type**. This c
 
 To preserve remix rights, we introduced an **extension point** in `FirstOrderLogic.fs`:
 
-* ISymbolAdapter allows external symbolic logics to plug into the ordinance.
+* `ISymbolAdapter` allows external symbolic logics to plug into the ordinance.
 * This ensures FunctionaL City remains remixable: citizens can bring their own symbolic dialects without breaking the civic charter.
 * A stub note has been scaffolded for future extension, signaling where remixers can narrate their own overlays.
 
@@ -58,6 +60,19 @@ Quick take: With `CivicSet.fs` foundations stable, the most legacy-worthy next s
 ### ✨ Closing Thought
 
 This amendment and roadmap together form a zoning charter for FunctionaL City’s symbolic and set-theoretic districts. By grounding symbols in a concrete type and scaffolding overlays as signage, we ensure every ordinance is narratable, remixable, and legacy-worthy.
+
+## Crosslinks
+*City Limits*
+- [🏛️ FunctionaL City — City Hall](../../README.md)
+
+*Primitives ordinance book.*
+- [📘 Foundations/Primitives.md](../../CivicAlgebraicInfrastructure/Foundations/Primitives.md)
+
+*First Order Logic ordinance book.*
+- [📘 Foundations/FirstOrderLogic.md](../../CivicAlgebraicInfrastructure/Foundations/FirstOrderLogic.md)
+  
+*Civic Set ordinance book.*
+- [📘 Foundations/CivicSet.md](../../CivicAlgebraicInfrastructure/Foundations/CivicSet.md)
 
 ## 📬 Future *Message from the Mayor* Dispatches
 
