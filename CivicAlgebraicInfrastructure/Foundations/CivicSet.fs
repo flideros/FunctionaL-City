@@ -86,6 +86,8 @@ type SetResult<'T>(value:'T option, success:bool, message:string option, provena
         SetResult(Some value, true, msg, defaultArg prov Provenance.empty)
     static member Failure(msg:string, ?prov) =
         SetResult(None, false, Some msg, defaultArg prov Provenance.empty)
+    static member Default() =
+        SetResult<'T>(None, false, Some "Default SetResult", Provenance.empty)
 
 /// <summary>
 /// Interface describing a civic set with both concrete and symbolic overlays.
@@ -114,11 +116,11 @@ type ICivicSet<'Concrete> =
     /// Attached metadata signage artifacts.
     abstract member Metadata : CivicSetMetadataItem list
     /// Logical overlay: tests closedness under set operators.
-    abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> bool//SetResult<bool>
+    abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> SetResult<bool>
     /// Logical overlay: implication relation to another civic set.
-    abstract member Implies : ICivicSet<'Concrete> -> bool//SetResult<bool>
+    abstract member Implies : ICivicSet<'Concrete> -> SetResult<bool>
     /// Logical overlay: equivalence relation to another civic set.
-    abstract member EquivalentTo : ICivicSet<'Concrete> -> bool//SetResult<bool>
+    abstract member EquivalentTo : ICivicSet<'Concrete> -> SetResult<bool>
 
 /// <summary>
 /// Lifted union of homotypic civic sets (same concrete type).
@@ -364,9 +366,9 @@ module CivicSetConstructors =
             member _.Min = None
             member _.Max = None
             member _.Metadata : CivicSetMetadataItem list = [ Tag "LiftedUnion" ] @ [SetTheoretic mergedSetTheoreticMetadata] @ [ Provenance unionProv ]
-            member _.IsClosedUnder _ = false
-            member _.Implies _ = false
-            member _.EquivalentTo _ = false }        
+            member _.IsClosedUnder _ = SetResult.Default()
+            member _.Implies _ = SetResult.Default()
+            member _.EquivalentTo _ = SetResult.Default() }        
 
     /// <summary>
     /// Wraps a lifted union into the CivicUnion tagged representation.
@@ -534,9 +536,9 @@ module CivicSetConstructors =
                         member _.Min = min
                         member _.Max = max
                         member _.Metadata = [ Tag "CollapsedFromLiftedUnion" ] @ [ SetTheoretic setTheoreticMetadata ] @ [ Provenance derived ]
-                        member _.IsClosedUnder _ = false
-                        member _.Implies _ = false
-                        member _.EquivalentTo _ = false }
+                        member _.IsClosedUnder _ = SetResult.Default()
+                        member _.Implies _ = SetResult.Default()
+                        member _.EquivalentTo _ = SetResult.Default() }
 
                 Some concrete        
         

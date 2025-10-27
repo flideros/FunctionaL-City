@@ -48,9 +48,9 @@ Within this framework, ℕ was reconstructed as a set-theoretic object using the
 ordinal construction, where each natural number is defined as the set of all smaller 
 natural numbers. This civic declaration reflects that lineage: ℕ is countable, totally ordered, 
 and formally grounded in ZFC + Peano arithmetic.""" ]
-        member _.IsClosedUnder _ = true
-        member _.Implies _       = false
-        member _.EquivalentTo _  = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _       = SetResult.Default()
+        member _.EquivalentTo _  = SetResult.Default() }
 
 // -----------------------------
 // Example: ℤ = all integers
@@ -87,9 +87,9 @@ let integers =
 equivalence classes of ordered pairs of natural numbers: (a, b) represents the integer a − b. 
 This construction, formalized within ZFC, preserves total order and countability. ℤ includes zero, 
 positive naturals, and their negatives, forming a foundational ring for arithmetic and algebra.""" ]
-        member _.IsClosedUnder _ = true
-        member _.Implies _       = false
-        member _.EquivalentTo _  = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _       = SetResult.Default()
+        member _.EquivalentTo _  = SetResult.Default() }
 
 // -----------------------------
 // Example: ℚ = rationals
@@ -157,9 +157,9 @@ ordered pairs (a, b) where b ≠ 0. Each pair represents the fraction a/b, with 
 defined by cross-multiplication. This construction, formalized in ZFC, yields a countable, 
 totally ordered field. ℚ supports addition, multiplication, and inversion (except for zero), 
 forming the backbone of ratio-based arithmetic.""" ]
-        member _.IsClosedUnder _ = true
-        member _.Implies _       = false
-        member _.EquivalentTo _  = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _       = SetResult.Default()
+        member _.EquivalentTo _  = SetResult.Default() }
 
 // -----------------------------
 // Example: ℝ = reals
@@ -204,9 +204,9 @@ It can be constructed via Dedekind cuts—partitions of ℚ—or equivalence cla
 Formalized within ZFC, ℝ is uncountable and totally ordered, satisfying the completeness axiom: 
 every bounded set has a least upper bound. ℝ underpins analysis, calculus, and continuous modeling 
 in civic infrastructure.""" ]
-        member _.IsClosedUnder _ = true
-        member _.Implies _       = false
-        member _.EquivalentTo _  = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _       = SetResult.Default()
+        member _.EquivalentTo _  = SetResult.Default() }
 
 // -----------------------------
 // Example: ℂ = complex
@@ -242,9 +242,9 @@ let complex =
             [ SetTheoretic { Cardinality  = Some Continuum
                              Countability = Some Uncountable
                              OrderType    = None } ]
-        member _.IsClosedUnder _ = true
-        member _.Implies _       = false
-        member _.EquivalentTo _  = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _       = SetResult.Default()
+        member _.EquivalentTo _  = SetResult.Default() }
 
 // -----------------------------
 // Quick tests
@@ -366,9 +366,9 @@ let makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int> =
                                            Timestamp = Some DateTime.UtcNow; 
                                            Note = "original"; 
                                            Lineage = [natProvenance] } ]
-        member _.IsClosedUnder _ = false
-        member _.Implies _ = false
-        member _.EquivalentTo _ = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _ = SetResult.Default()
+        member _.EquivalentTo _ = SetResult.Default() }
 
 let makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int> =
     
@@ -389,9 +389,9 @@ let makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int> =
                                            Timestamp = Some DateTime.UtcNow; 
                                            Note = "original"; 
                                            Lineage = [natProvenance] } ]
-        member _.IsClosedUnder _ = false
-        member _.Implies _ = false
-        member _.EquivalentTo _ = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _ = SetResult.Default()
+        member _.EquivalentTo _ = SetResult.Default() }
 
 let makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<string> =
     
@@ -412,9 +412,9 @@ let makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<string> =
                                            Timestamp = Some DateTime.UtcNow; 
                                            Note = "Strings are finite and ordered sequences of arbitrary symbols drawn from a finite, non-empty set."; 
                                            Lineage = [] } ]
-        member _.IsClosedUnder _ = false
-        member _.Implies _ = false
-        member _.EquivalentTo _ = false }
+        member _.IsClosedUnder _ = SetResult.Default()
+        member _.Implies _ = SetResult.Default()
+        member _.EquivalentTo _ = SetResult.Default() }
 
 let setA = makeSimpleNaturalSet "Nat" [1;2;3;4;5]
 let setB = makeSimpleNaturalSet2 "Odds" [1;3;5;7;9]
