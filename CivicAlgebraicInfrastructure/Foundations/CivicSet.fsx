@@ -374,12 +374,14 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int> =
 
             let prov =
                 { Provenance.empty with
-                    SourceName = sprintf "Implication(%s ⇒ %s)"
-                                    (defaultArg this.Symbol  "∅")
-                                    (defaultArg other.Symbol "∅")
+                    SourceName = sprintf "Implication (%s ⇒ %s)"
+                                    (defaultArg this.Symbol  "A")
+                                    (defaultArg other.Symbol "B")
                     Step = difference.Provenance.Step + 1
-                    Note = """if allImply then "Implication holds"
-                        else sprintf "Implication fails: %d counterexample(s)" diff.Length""" }
+                    Note = 
+                        match allImply with 
+                        | true -> "if allImply is true then Implication holds"
+                        | false -> sprintf "Implication fails: %d counterexample(s)" difference.Value.Value.Length }
 
             match allImply with
             | true -> SetResult.Succeed(diffSet,  "Implication holds", prov)
@@ -415,12 +417,14 @@ let rec makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int> =
 
             let prov =
                 { Provenance.empty with
-                    SourceName = sprintf "Implication(%s ⇒ %s)"
-                                    (defaultArg this.Symbol  "∅")
-                                    (defaultArg other.Symbol "∅")
+                    SourceName = sprintf "Implication (%s ⇒ %s)"
+                                    (defaultArg this.Symbol  "A")
+                                    (defaultArg other.Symbol "B")
                     Step = difference.Provenance.Step + 1
-                    Note = """if allImply then "Implication holds"
-                        else sprintf "Implication fails: %d counterexample(s)" diff.Length""" }
+                    Note = 
+                        match allImply with 
+                        | true -> "if allImply is true then Implication holds"
+                        | false -> sprintf "Implication fails: %d counterexample(s)" difference.Value.Value.Length }
 
             match allImply with
             | true -> SetResult.Succeed(diffSet,  "Implication holds", prov)
@@ -456,12 +460,14 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
 
             let prov =
                 { Provenance.empty with
-                    SourceName = sprintf "Implication(%s ⇒ %s)"
-                                    (defaultArg this.Symbol  "∅")
-                                    (defaultArg other.Symbol "∅")
+                    SourceName = sprintf "Implication (%s ⇒ %s)"
+                                    (defaultArg this.Symbol  "A")
+                                    (defaultArg other.Symbol "B")
                     Step = difference.Provenance.Step + 1
-                    Note = """if allImply then "Implication holds"
-                        else sprintf "Implication fails: %d counterexample(s)" diff.Length""" }
+                    Note = 
+                        match allImply with 
+                        | true -> "if allImply is true then Implication holds"
+                        | false -> sprintf "Implication fails: %d counterexample(s)" difference.Value.Value.Length }
 
             match allImply with
             | true -> SetResult.Succeed(diffSet,"Implication holds", prov)
@@ -514,14 +520,15 @@ printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
-
     
 let result = setB.Implies(setA):> ICivicResult<_>
-
 printfn "%A" result.Success
+printfn "%A" result.Message
+printfn "%A" result.Value.Value.Elements
+printfn "%A" result.Provenance.Note
+
 let diffResult = (Operations.setDifference setA setB) :> ICivicResult<_>
-
 printfn "%A" diffResult.Message
-
+printfn "%A" diffResult.Success
 printfn "%A" diffResult.Value
-printfn "%A" diffResult.Provenance
+// printfn "%A" diffResult.Provenance
