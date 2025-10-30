@@ -82,9 +82,11 @@ type SetResult<'T>(value:'T option, success:bool, message:string option, provena
         member _.Provenance = provenance
 
     /// Convenience constructors
-    static member Success(value:'T, ?msg, ?prov) =
+    static member Succeed(value:'T, ?msg, ?prov) =
         SetResult(Some value, true, msg, defaultArg prov Provenance.empty)
-    static member Failure(msg:string, ?prov) =
+    static member FailWithValue(value:'T, ?msg, ?prov) =
+        SetResult(Some value, false, msg, defaultArg prov Provenance.empty)
+    static member Fail(msg:string, ?prov) =
         SetResult(None, false, Some msg, defaultArg prov Provenance.empty)
     static member Default() =
         SetResult<'T>(None, false, Some "Default SetResult", Provenance.empty)
@@ -118,7 +120,7 @@ type ICivicSet<'Concrete> =
     /// Logical overlay: tests closedness under set operators.
     abstract member IsClosedUnder : (ICivicSet<'Concrete> -> ICivicSet<'Concrete>) -> SetResult<bool>
     /// Logical overlay: implication relation to another civic set.
-    abstract member Implies : ICivicSet<'Concrete> -> SetResult<bool>
+    abstract member Implies : ICivicSet<'Concrete> -> SetResult<ICivicSet<'Concrete>>
     /// Logical overlay: equivalence relation to another civic set.
     abstract member EquivalentTo : ICivicSet<'Concrete> -> SetResult<bool>
 
@@ -217,6 +219,34 @@ module SetTheoreticMetadata =
             | CivicSetMetadataItem.SetTheoretic s -> Some s
             | _ -> None)
 
+module Operations =
+    
+    /// <summary>
+    /// Computes the set difference between two civic sets, returning all elements
+    /// in <paramref name="this"/> that are not contained in <paramref name="other"/>.
+    /// </summary>
+    let setDifference (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T list> =
+        
+        let pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
+            meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
+        
+        let sourceName = sprintf "setDifference (%s \ %s%s)"
+                                    (defaultArg this.Symbol  "A")                                    
+                                    (defaultArg other.Symbol "B")
+                                    (defaultArg this.Symbol  "A")
+
+        let prov =                
+                let provs  = List.map pickProvenanceFromSetMetadata [this.Metadata;other.Metadata]
+                let derivedProv = Provenance.mkDerived sourceName "setDifference" provs
+                derivedProv
+
+        let difference = 
+            this.Elements
+            |> Seq.filter (fun x -> not (other.Contains x))
+            |> Seq.toList
+
+        SetResult.Succeed ( difference, sourceName, prov )
+ 
 module CivicSetConstructors =
     /// <summary>
     /// Extracts the first Provenance entry from metadata if present.
@@ -527,6 +557,8 @@ module CivicSetConstructors =
                 let symbol = liftedSet.Symbol
 
                 let concrete : ICivicSet<'T> =
+                    //let rec mk =
+                    
                     { new ICivicSet<'T> with
                         member _.Symbol = symbol
                         member _.Formula = formulaOpt
@@ -555,11 +587,4 @@ module CivicSetConstructors =
         | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
         | Heterotypic b-> None
 
-module Operations =
-    
-    /// <summary>
-    /// Determine whether set a is a subset of set b by checking every element of a is contained in b.
-    /// </summary>
-    /// <returns>True when a ⊆ b.</returns>
-    let isSubsetOf (a: ICivicSet<'T>) (b: ICivicSet<'T>) : bool =
-        a.Elements |> Seq.forall b.Contains
+
