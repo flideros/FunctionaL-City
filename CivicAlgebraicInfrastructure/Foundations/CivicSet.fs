@@ -259,8 +259,7 @@ module SetTheoreticMetadata =
         | None, Some _ -> "Missing cardinality metadata."
         | None, None -> "Missing countability metadata."
 
-module Operations =
-    
+module Operations =     
     /// <summary>
     /// Computes the set difference between two civic sets, returning all elements
     /// in <paramref name="this"/> that are not contained in <paramref name="other"/>.
@@ -277,7 +276,7 @@ module Operations =
                                     (defaultArg this.Symbol  "A")
 
         let setComputability =
-            match (cardCountThis) with
+            match cardCountThis with
             | Some (Finite _), Some Countable -> FiniteEnumerable
             | Some (Finite _), _ -> FiniteEnumerable
             | Some Aleph0, Some Countable -> PossiblyInfinite
@@ -309,7 +308,6 @@ module Operations =
             [SetTheoreticMetadata.infiniteSetDiagnostics cardCountThis;
              SetTheoreticMetadata.infiniteSetDiagnostics cardCountOther]
             |> List.distinct
-
 
         let message =
             match diagnostics.IsEmpty with 
