@@ -368,9 +368,9 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int> =
                                            Lineage = [natProvenance] } ]
         member _.IsClosedUnder _ = SetResult.Default()
         member this.Implies (other: ICivicSet<int>) : SetResult<ICivicSet<int>> =            
-            let difference = (Operations.setDifference this other) :> ICivicResult<_>
+            let difference = (Operations.setDifferenceResult this other) :> ICivicResult<_>
             let diffSet = (makeSimpleNaturalSet "Counterexample set" difference.Value.Value)
-            let allImply = List.isEmpty difference.Value.Value
+            let allImply = List.isEmpty difference.Value.Value && difference.Success
 
             let prov =
                 { Provenance.empty with
@@ -387,50 +387,6 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) : ICivicSet<int> =
             | true -> SetResult.Succeed(diffSet,  "Implication holds", prov)
             | false -> 
                 SetResult.FailWithValue(diffSet,  "Implication fails with counterexamples", prov)
-        member _.EquivalentTo _ = SetResult.Default() }
-
-let rec makeSimpleNaturalSet2 (name: string) (vals: int list) : ICivicSet<int> =
-    
-    { new ICivicSet<int> with
-        member _.Symbol = Some name
-        member _.Formula = None
-        member _.Contains x = List.contains x vals
-        member _.Elements = vals :> seq<int>
-        member _.Compare = Some compare
-        member _.Min = if List.isEmpty vals then None else Some (List.min vals)
-        member _.Max = if List.isEmpty vals then None else Some (List.max vals)
-        member _.Metadata = [ Tag $"SimpleSet:{name}"; 
-                              SetTheoretic { Cardinality  = Some (Finite vals.Length)
-                                             Countability = Some Countable
-                                             OrderType    = Some TotalOrder }
-                              Provenance { SourceName = name; 
-                                           Step = 2; 
-                                           Timestamp = Some DateTime.UtcNow; 
-                                           Note = "original"; 
-                                           Lineage = [natProvenance] } ]
-        member _.IsClosedUnder _ = SetResult.Default()
-        
-        member this.Implies (other: ICivicSet<int>) : SetResult<ICivicSet<int>> =   
-            let difference = (Operations.setDifference this other) :> ICivicResult<_>
-            let diffSet = (makeSimpleNaturalSet2 "Counterexample set" difference.Value.Value)
-            let allImply = List.isEmpty difference.Value.Value
-
-            let prov =
-                { Provenance.empty with
-                    SourceName = sprintf "Implication (%s ⇒ %s)"
-                                    (defaultArg this.Symbol  "A")
-                                    (defaultArg other.Symbol "B")
-                    Step = difference.Provenance.Step + 1
-                    Note = 
-                        match allImply with 
-                        | true -> "if allImply is true then Implication holds"
-                        | false -> sprintf "Implication fails: %d counterexample(s)" difference.Value.Value.Length }
-
-            match allImply with
-            | true -> SetResult.Succeed(diffSet,  "Implication holds", prov)
-            | false -> 
-                SetResult.FailWithValue(diffSet, "Implication fails with counterexamples", prov)
-
         member _.EquivalentTo _ = SetResult.Default() }
 
 let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<string> =
@@ -454,9 +410,9 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
                                            Lineage = [] } ]
         member _.IsClosedUnder _ = SetResult.Default()
         member this.Implies (other: ICivicSet<String>) : SetResult<ICivicSet<string>> =
-            let difference = (Operations.setDifference this other) :> ICivicResult<_>
+            let difference = (Operations.setDifferenceResult this other) :> ICivicResult<_>
             let diffSet = (makeSimpleStringSet "Counterexample set" difference.Value.Value)
-            let allImply = List.isEmpty difference.Value.Value
+            let allImply = List.isEmpty difference.Value.Value && difference.Success
 
             let prov =
                 { Provenance.empty with
@@ -476,7 +432,7 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
         member _.EquivalentTo _ = SetResult.Default() }
 
 let setA = makeSimpleNaturalSet "Nat" [1;2;3;4;5]
-let setB = makeSimpleNaturalSet2 "Odds" [1;3;5;7;9]
+let setB = makeSimpleNaturalSet "Odds" [-1;3;5;7;9]
 let setC = makeSimpleStringSet "String" ["A";"B";"C"]
 
 let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB 
@@ -520,15 +476,16 @@ printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
-    
-let result = setB.Implies(setA):> ICivicResult<_>
+printfn " "    
+let result = setB.Implies(naturalNumbers):> ICivicResult<_>
 printfn "%A" result.Success
 printfn "%A" result.Message
 printfn "%A" result.Value.Value.Elements
 printfn "%A" result.Provenance.Note
 
-let diffResult = (Operations.setDifference setA setB) :> ICivicResult<_>
+printfn " "
+let diffResult = (Operations.setDifferenceResult setA naturalNumbers) :> ICivicResult<_>
 printfn "%A" diffResult.Message
 printfn "%A" diffResult.Success
-printfn "%A" diffResult.Value
-// printfn "%A" diffResult.Provenance
+printfn "%A" diffResult.Value.Value
+printfn "%A" diffResult.Provenance.Note

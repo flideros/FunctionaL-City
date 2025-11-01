@@ -44,6 +44,15 @@ type OrderType =
     | Unordered
 
 /// <summary>
+/// Represents the expected computability of a civic set operation result.
+/// Used to determine whether evaluation is safe, deferred, or symbolic.
+/// </summary>
+type SetComputability =
+    | FiniteEnumerable
+    | PossiblyInfinite
+    | SymbolicOrUnsafe
+
+/// <summary>
 /// Aggregated set-theoretic metadata: cardinality, countability, and order type.
 /// </summary>
 /// <signage>
@@ -213,40 +222,105 @@ module SetTheoreticMetadata =
                 merged
 
     /// Extract SetTheoreticMetadata from a metadata token list; returns option
-    let tryPickFrom (items: CivicSetMetadataItem list) : SetTheoreticMetadata option =
+    let private tryPickFrom (items: CivicSetMetadataItem list) : SetTheoreticMetadata option =
         items
         |> List.tryPick (function
             | CivicSetMetadataItem.SetTheoretic s -> Some s
             | _ -> None)
+
+    /// <summary>
+    /// Extracts cardinality and countability metadata from a civic set.
+    /// Returns a tuple (Cardinality option, Countability option).
+    /// If metadata is missing or malformed, returns (None, None).
+    /// Use this as a precondition check before evaluating set operations.
+    /// </summary>
+    let extractCardinalityAndCountability (meta: CivicSetMetadataItem list) : Cardinality option * Countability option =
+        match tryPickFrom meta with
+        | Some m -> (m.Cardinality, m.Countability)
+        | None -> (None, None)
+
+    /// <summary>
+    /// Emits a diagnostic string describing the computability and metadata integrity of a civic set.
+    /// Use this to scaffold signage overlays for provenance, civic inspection, or remix safety.
+    /// Returns a narratable message for remixers.
+    /// </summary>
+    let infiniteSetDiagnostics (card: Cardinality option, count: Countability option) : string =
+        match card, count with
+        | Some (Finite _), Some Countable -> "Fully finite and enumerable"
+        | Some (Finite _), Some Uncountable -> "Finite cardinality with uncountable classification: check metadata consistency."
+        | Some (Finite _), None -> "Finite cardinality but missing countability metadata."
+        | Some Aleph0, Some Countable -> "ℵ₀ detected: result may be non-enumerable."
+        | Some Aleph0, Some Uncountable -> "ℵ₀ with uncountable classification: check metadata consistency."
+        | Some Aleph0, None -> "ℵ₀ detected but missing countability metadata."
+        | Some Continuum, Some Uncountable -> "Continuum cardinality: result may be uncomputable."
+        | Some Continuum, Some Countable -> "Continuum with countable classification: check metadata consistency."
+        | Some Continuum, None -> "Continuum cardinality but missing countability metadata."
+        | Some (Other id), _ -> $"Unknown cardinality '{id}': inspect manually."
+        | None, Some _ -> "Missing cardinality metadata."
+        | None, None -> "Missing countability metadata."
 
 module Operations =
     
     /// <summary>
     /// Computes the set difference between two civic sets, returning all elements
     /// in <paramref name="this"/> that are not contained in <paramref name="other"/>.
+    /// with provenance and infinite set diagnostics. Caller decides how to construct the civic set.
     /// </summary>
-    let setDifference (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T list> =
+    let setDifferenceResult (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T list> =
         
-        let pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
-            meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
-        
+        let cardCountThis  = SetTheoreticMetadata.extractCardinalityAndCountability this.Metadata
+        let cardCountOther = SetTheoreticMetadata.extractCardinalityAndCountability other.Metadata
+
         let sourceName = sprintf "setDifference (%s \ %s%s)"
                                     (defaultArg this.Symbol  "A")                                    
                                     (defaultArg other.Symbol "B")
                                     (defaultArg this.Symbol  "A")
 
+        let setComputability =
+            match (cardCountThis) with
+            | Some (Finite _), Some Countable -> FiniteEnumerable
+            | Some (Finite _), _ -> FiniteEnumerable
+            | Some Aleph0, Some Countable -> PossiblyInfinite
+            | Some Continuum, Some Uncountable -> PossiblyInfinite
+            | Some Continuum, _ -> SymbolicOrUnsafe
+            | _, _ -> SymbolicOrUnsafe
+        
         let prov =                
-                let provs  = List.map pickProvenanceFromSetMetadata [this.Metadata;other.Metadata]
-                let derivedProv = Provenance.mkDerived sourceName "setDifference" provs
-                derivedProv
-
+            let pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
+                meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
+            let provs  = List.map pickProvenanceFromSetMetadata [this.Metadata;other.Metadata]
+            let operationNote = 
+                match setComputability with
+                | FiniteEnumerable -> "setDifference"
+                | PossiblyInfinite -> "setDifference -- Result may be infinite; inspect laziness and computability."
+                | SymbolicOrUnsafe -> "setDifference -- Result may be symbolic or non-enumerable; civic construction required."
+            let derivedProv = Provenance.mkDerived sourceName operationNote provs
+            derivedProv
+        
         let difference = 
-            this.Elements
-            |> Seq.filter (fun x -> not (other.Contains x))
-            |> Seq.toList
+            match setComputability with
+            | FiniteEnumerable -> 
+                this.Elements
+                |> Seq.filter (fun x -> not (other.Contains x))
+                |> Seq.toList
+            | _ -> []
+        
+        let diagnostics =
+            [SetTheoreticMetadata.infiniteSetDiagnostics cardCountThis;
+             SetTheoreticMetadata.infiniteSetDiagnostics cardCountOther]
+            |> List.distinct
 
-        SetResult.Succeed ( difference, sourceName, prov )
- 
+
+        let message =
+            match diagnostics.IsEmpty with 
+            | false -> (String.concat " | " diagnostics)
+            | true -> sourceName
+
+        match setComputability with
+        | FiniteEnumerable -> SetResult.Succeed ( difference, message, prov )
+        | PossiblyInfinite 
+        | SymbolicOrUnsafe -> SetResult.FailWithValue ([], message, prov )
+        
 module CivicSetConstructors =
     /// <summary>
     /// Extracts the first Provenance entry from metadata if present.
