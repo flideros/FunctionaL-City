@@ -7,8 +7,7 @@ open CivicAlgebraicInfrastructure.Foundations.Primitives
 open CivicAlgebraicInfrastructure.Foundations.FOL
 open CivicAlgebraicInfrastructure.Foundations.CivicSet
 
-
-let mkInfiniteSet (rules : CivicInfiniteSetRuleSet<'T>) symbol   =
+let mkInfiniteSet (rules : InfiniteSetRuleDictionary<'T>) symbol   =
     match rules.TryFind symbol with
     | Some rule -> 
         { new ICivicSet<'T> with
@@ -30,14 +29,13 @@ let mkInfiniteSet (rules : CivicInfiniteSetRuleSet<'T>) symbol   =
             member _.EquivalentTo _  = SetResult.Default() }
     | None -> failwith $"Symbol {symbol} not found in registry."
 
-
 // -----------------------------
 // Example: ℕ = { x | x ≥ 0 }
 // -----------------------------
 
-let intRules : CivicInfiniteSetRuleSet<int> = (Map.ofList [])
+let intRules : InfiniteSetRuleDictionary<int> = (Map.ofList [])
 
-let addRule symbol rule (registry: CivicInfiniteSetRuleSet<'T>) : CivicInfiniteSetRuleSet<'T> =
+let addRule symbol rule (registry: InfiniteSetRuleDictionary<'T>) : InfiniteSetRuleDictionary<'T> =
     registry.Add(symbol, rule)
 
 let geq = { Name = "≥"; Kind = PredicateKind; Arity = Some 2}
@@ -54,7 +52,7 @@ let natProvenance : Provenance =
       Note = "Declared ℕ as the set of natural numbers ≥ 0, formalized in ZFC and derived from Peano axioms." 
       Lineage = [] }
 
-let naturalNumberRules : CivicInfiniteSetRule<int> =            
+let naturalNumbersSpec : InfiniteSetRule<int> =            
     { Filter = fun n -> n >= 0;
       Generator = fun i -> i;
       Formula = Some natFormula;
@@ -75,8 +73,8 @@ natural numbers. This civic declaration reflects that lineage: ℕ is countable,
 and formally grounded in ZFC + Peano arithmetic.""" 
      }
     
-// This map might be a muteable variable or a state variable up stream, but here well construct the map linearly.
-let naturalRules = intRules.Add  ("\u2115", naturalNumberRules) 
+// This map might be a muteable variable or a state variable up stream, but here we'll construct the map linearly.
+let naturalRules = intRules.Add  ("\u2115", naturalNumbersSpec) 
 
 let naturalNumbers  = mkInfiniteSet naturalRules "\u2115" 
     
@@ -97,7 +95,7 @@ let intProvenance : Provenance =
       Note = "Declared ℤ as the set of integers, constructed from ℕ using equivalence classes of ordered pairs." 
       Lineage = [] }
 
-let integerRules : CivicInfiniteSetRule<int> =            
+let integersSpec : InfiniteSetRule<int> =            
     { Filter = fun n -> true;
       Generator = fun n -> if n % 2 = 0 then n/2 else -(n/2 + 1);
       Formula = Some intFormula;
@@ -114,7 +112,7 @@ This construction, formalized within ZFC, preserves total order and countability
 positive naturals, and their negatives, forming a foundational ring for arithmetic and algebra.""" 
      }
 
-let int_Rules = naturalRules.Add  ("\u2124", integerRules) 
+let int_Rules = naturalRules.Add  ("\u2124", integersSpec) 
 
 let integers = mkInfiniteSet int_Rules "\u2124"
 
@@ -401,7 +399,7 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Proven
         member this.Implies (other: ICivicSet<int>) : SetResult<ICivicSet<int>> =            
             let difference = (Operations.setDifferenceResult this other) :> ICivicResult<_>
             
-            let allImply = List.isEmpty difference.Value.Value && difference.Success
+            let allImply = Seq.isEmpty difference.Value.Value && difference.Success
 
             let impProv =
                 match provOption with 
@@ -415,13 +413,13 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Proven
                             match allImply with 
                             | true -> "rule = exhaustive-finite; outcome = Proven; method = difference; checked = 100% of source; note = Implication holds"
                             | false -> 
-                                match List.isEmpty difference.Value.Value with
-                                | false -> sprintf "rule = exhaustive-finite; outcome = Refuted; method = difference; counterexamples = %d; witness = %A; ; note = Implication fails" difference.Value.Value.Length difference.Value.Value
+                                match Seq.isEmpty difference.Value.Value with
+                                | false -> sprintf "rule = exhaustive-finite; outcome = Refuted; method = difference; counterexamples = %d; witness = %A; ; note = Implication fails" (Seq.toList difference.Value.Value).Length difference.Value.Value
                                 | true -> difference.Provenance.Note
                         Lineage = difference.Provenance.Lineage}
                 | Some p -> p
 
-            let diffSet = (makeSimpleNaturalSet "Counterexample set" difference.Value.Value (Some impProv))
+            let diffSet = (makeSimpleNaturalSet "Counterexample set" (Seq.toList difference.Value.Value) (Some impProv))
 
             match allImply with
             | true -> SetResult.Succeed(diffSet,  "Implication holds", impProv)
@@ -451,8 +449,8 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
         member _.IsClosedUnder _ = SetResult.Default()
         member this.Implies (other: ICivicSet<String>) : SetResult<ICivicSet<string>> =
             let difference = (Operations.setDifferenceResult this other) :> ICivicResult<_>
-            let diffSet = (makeSimpleStringSet "Counterexample set" difference.Value.Value)
-            let allImply = List.isEmpty difference.Value.Value && difference.Success
+            let diffSet = (makeSimpleStringSet "Counterexample set" (Seq.toList difference.Value.Value))
+            let allImply = Seq.isEmpty difference.Value.Value && difference.Success
 
             let prov =
                 { Provenance.empty with
@@ -463,7 +461,7 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
                     Note = 
                         match allImply with 
                         | true -> "Implication holds"
-                        | false -> sprintf "Implication fails: %d counterexample(s)" difference.Value.Value.Length }
+                        | false -> sprintf "Implication fails: %d counterexample(s)" (Seq.toList difference.Value.Value).Length }
 
             match allImply with
             | true -> SetResult.Succeed(diffSet,"Implication holds", prov)
@@ -526,7 +524,7 @@ printfn "%A" result.Value.Value.Metadata
 printfn "%A" result.Provenance.Note
 
 printfn " "
-let diffResult: ICivicResult<int list> = (Operations.setDifferenceResult setA setB) :> ICivicResult<_>
+let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult setA setB) :> ICivicResult<_>
 printfn "%A" diffResult.Message
 printfn "%A" diffResult.Success
 printfn "%A" diffResult.Value.Value

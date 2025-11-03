@@ -83,7 +83,7 @@ type CivicSetMetadataItem =
     | Note of string
     | Custom of string * string // extension point
 
-type CivicInfiniteSetRule<'T> = {
+type InfiniteSetRule<'T> = {
     Filter: 'T -> bool
     Generator: int -> 'T
     Formula: Formula<Symbol> option
@@ -96,7 +96,7 @@ type CivicInfiniteSetRule<'T> = {
     Order_Type : OrderType option
     Note: string }
 
-type CivicInfiniteSetRuleSet<'T> = Map<string, CivicInfiniteSetRule<'T>>
+type InfiniteSetRuleDictionary<'T> = Map<string, InfiniteSetRule<'T>>
 
 type SetResult<'T>(value:'T option, success:bool, message:string option, provenance:Provenance) =
     interface ICivicResult<'T> with
@@ -280,7 +280,7 @@ module Operations =
     /// in <paramref name="this"/> that are not contained in <paramref name="other"/>.
     /// with provenance and infinite set diagnostics. Caller decides how to construct the civic set.
     /// </summary>
-    let setDifferenceResult (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T list> =
+    let setDifferenceResult (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T seq> =
         
         let cardCountThis  = SetTheoreticMetadata.extractCardinalityAndCountability this.Metadata
         let cardCountOther = SetTheoreticMetadata.extractCardinalityAndCountability other.Metadata
@@ -316,7 +316,7 @@ module Operations =
             | FiniteEnumerable -> 
                 this.Elements
                 |> Seq.filter (fun x -> not (other.Contains x))
-                |> Seq.toList
+                //|> Seq.toList
             | _ -> []
         
         let diagnostics =
