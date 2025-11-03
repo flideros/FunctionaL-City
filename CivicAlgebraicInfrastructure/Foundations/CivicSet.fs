@@ -83,6 +83,21 @@ type CivicSetMetadataItem =
     | Note of string
     | Custom of string * string // extension point
 
+type CivicInfiniteSetRule<'T> = {
+    Filter: 'T -> bool
+    Generator: int -> 'T
+    Formula: Formula<Symbol> option
+    Provenance: Provenance
+    Min : 'T option
+    Max : 'T option
+    Compare : ('T -> 'T -> int) option
+    Card : Cardinality option
+    Count : Countability option
+    Order_Type : OrderType option
+    Note: string }
+
+type CivicInfiniteSetRuleSet<'T> = Map<string, CivicInfiniteSetRule<'T>>
+
 type SetResult<'T>(value:'T option, success:bool, message:string option, provenance:Provenance) =
     interface ICivicResult<'T> with
         member _.Value = value

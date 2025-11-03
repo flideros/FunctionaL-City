@@ -8,9 +8,37 @@ open CivicAlgebraicInfrastructure.Foundations.FOL
 open CivicAlgebraicInfrastructure.Foundations.CivicSet
 
 
+let mkInfiniteSet (rules : CivicInfiniteSetRuleSet<'T>) symbol   =
+    match rules.TryFind symbol with
+    | Some rule -> 
+        { new ICivicSet<'T> with
+            member _.Symbol       = Some symbol
+            member _.Formula      = rule.Formula
+            member _.Contains n  = rule.Filter n
+            member _.Elements     = Seq.initInfinite rule.Generator
+            member _.Compare      = rule.Compare
+            member _.Min          = rule.Min
+            member _.Max          = rule.Max
+            member _.Metadata     = 
+                [ SetTheoretic { Cardinality  = rule.Card
+                                 Countability = rule.Count
+                                 OrderType    = rule.Order_Type };
+                Provenance rule.Provenance;
+                Note rule.Note ]
+            member _.IsClosedUnder _ = SetResult.Default()
+            member _.Implies _       = SetResult.Default()
+            member _.EquivalentTo _  = SetResult.Default() }
+    | None -> failwith $"Symbol {symbol} not found in registry."
+
+
 // -----------------------------
 // Example: ℕ = { x | x ≥ 0 }
 // -----------------------------
+
+let intRules : CivicInfiniteSetRuleSet<int> = (Map.ofList [])
+
+let addRule symbol rule (registry: CivicInfiniteSetRuleSet<'T>) : CivicInfiniteSetRuleSet<'T> =
+    registry.Add(symbol, rule)
 
 let geq = { Name = "≥"; Kind = PredicateKind; Arity = Some 2}
 let xSym = { Name = "x"; Kind = VariableKind; Arity = None}
@@ -26,32 +54,32 @@ let natProvenance : Provenance =
       Note = "Declared ℕ as the set of natural numbers ≥ 0, formalized in ZFC and derived from Peano axioms." 
       Lineage = [] }
 
-let naturalNumbers =
-    { new ICivicSet<int> with
-        member _.Symbol       = Some "\u2115"   // ℕ
-        member _.Formula      = Some natFormula
-        member _.Contains n   = n >= 0
-        member _.Elements     = Seq.initInfinite id
-        member _.Compare      = Some compare
-        member _.Min          = Some 0
-        member _.Max          = None
-        member _.Metadata     = 
-            [ SetTheoretic { Cardinality  = Some Aleph0
-                             Countability = Some Countable
-                             OrderType    = Some TotalOrder };
-              Provenance natProvenance;
-              Note """ℕ, the set of natural numbers ≥ 0, originates from Giuseppe Peano's 1889 axioms, 
+let naturalNumberRules : CivicInfiniteSetRule<int> =            
+    { Filter = fun n -> n >= 0;
+      Generator = fun i -> i;
+      Formula = Some natFormula;
+      Provenance = natProvenance;
+      Max = None;
+      Min = Some 0;
+      Compare = Some compare
+      Card = Some Aleph0
+      Count = Some Countable
+      Order_Type = Some TotalOrder
+      Note = """ℕ, the set of natural numbers ≥ 0, originates from Giuseppe Peano's 1889 axioms, 
 which defined arithmetic using successor functions and induction. These axioms laid the 
 foundation for formal number theory. In the early 20th century, Ernst Zermelo introduced 
 axioms for set theory (1908), later extended by Abraham Fraenkel and others to form ZFC. 
 Within this framework, ℕ was reconstructed as a set-theoretic object using the von Neumann 
 ordinal construction, where each natural number is defined as the set of all smaller 
 natural numbers. This civic declaration reflects that lineage: ℕ is countable, totally ordered, 
-and formally grounded in ZFC + Peano arithmetic.""" ]
-        member _.IsClosedUnder _ = SetResult.Default()
-        member _.Implies _       = SetResult.Default()
-        member _.EquivalentTo _  = SetResult.Default() }
+and formally grounded in ZFC + Peano arithmetic.""" 
+     }
+    
+// This map might be a muteable variable or a state variable up stream, but here well construct the map linearly.
+let naturalRules = intRules.Add  ("\u2115", naturalNumberRules) 
 
+let naturalNumbers  = mkInfiniteSet naturalRules "\u2115" 
+    
 // -----------------------------
 // Example: ℤ = all integers
 // -----------------------------
@@ -69,27 +97,26 @@ let intProvenance : Provenance =
       Note = "Declared ℤ as the set of integers, constructed from ℕ using equivalence classes of ordered pairs." 
       Lineage = [] }
 
-let integers =
-    { new ICivicSet<int> with
-        member _.Symbol       = Some "\u2124"   // ℤ
-        member _.Formula      = Some intFormula
-        member _.Contains _   = true
-        member _.Elements     = Seq.initInfinite (fun n -> if n % 2 = 0 then n/2 else -(n/2 + 1))
-        member _.Compare      = Some compare
-        member _.Min          = None
-        member _.Max          = None
-        member _.Metadata     =
-            [ SetTheoretic { Cardinality  = Some Aleph0
-                             Countability = Some Countable
-                             OrderType    = Some TotalOrder };
-              Provenance intProvenance; 
-              Note """ℤ, the set of integers, extends ℕ by introducing additive inverses. It is constructed using 
+let integerRules : CivicInfiniteSetRule<int> =            
+    { Filter = fun n -> true;
+      Generator = fun n -> if n % 2 = 0 then n/2 else -(n/2 + 1);
+      Formula = Some intFormula;
+      Provenance = intProvenance;
+      Max = None;
+      Min = None;
+      Compare = Some compare
+      Card = Some Aleph0
+      Count = Some Countable
+      Order_Type = Some TotalOrder
+      Note = """ℤ, the set of integers, extends ℕ by introducing additive inverses. It is constructed using 
 equivalence classes of ordered pairs of natural numbers: (a, b) represents the integer a − b. 
 This construction, formalized within ZFC, preserves total order and countability. ℤ includes zero, 
-positive naturals, and their negatives, forming a foundational ring for arithmetic and algebra.""" ]
-        member _.IsClosedUnder _ = SetResult.Default()
-        member _.Implies _       = SetResult.Default()
-        member _.EquivalentTo _  = SetResult.Default() }
+positive naturals, and their negatives, forming a foundational ring for arithmetic and algebra.""" 
+     }
+
+let int_Rules = naturalRules.Add  ("\u2124", integerRules) 
+
+let integers = mkInfiniteSet int_Rules "\u2124"
 
 // -----------------------------
 // Example: ℚ = rationals
@@ -347,7 +374,7 @@ printfn "%s" (civicSetInspectorReport (Some naturalNumbers))
 // ---------------------------
 // Sample ICivicSet implementations for testing
 // ---------------------------
-let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Provenance option): ICivicSet<int> =
+let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Provenance option) : ICivicSet<int> =
     let prov =
                 match provOption with 
                 | None -> Provenance
@@ -386,8 +413,11 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Proven
                         Step = difference.Provenance.Step
                         Note = 
                             match allImply with 
-                            | true -> "if allImply is true then Implication holds"
-                            | false -> sprintf "Implication fails: %d counterexample(s)" difference.Value.Value.Length 
+                            | true -> "rule = exhaustive-finite; outcome = Proven; method = difference; checked = 100% of source; note = Implication holds"
+                            | false -> 
+                                match List.isEmpty difference.Value.Value with
+                                | false -> sprintf "rule = exhaustive-finite; outcome = Refuted; method = difference; counterexamples = %d; witness = %A; ; note = Implication fails" difference.Value.Value.Length difference.Value.Value
+                                | true -> difference.Provenance.Note
                         Lineage = difference.Provenance.Lineage}
                 | Some p -> p
 
@@ -432,7 +462,7 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
                     Step = difference.Provenance.Step
                     Note = 
                         match allImply with 
-                        | true -> "if allImply is true then Implication holds"
+                        | true -> "Implication holds"
                         | false -> sprintf "Implication fails: %d counterexample(s)" difference.Value.Value.Length }
 
             match allImply with
@@ -496,7 +526,7 @@ printfn "%A" result.Value.Value.Metadata
 printfn "%A" result.Provenance.Note
 
 printfn " "
-let diffResult: ICivicResult<int list> = (Operations.setDifferenceResult setA naturalNumbers) :> ICivicResult<_>
+let diffResult: ICivicResult<int list> = (Operations.setDifferenceResult setA setB) :> ICivicResult<_>
 printfn "%A" diffResult.Message
 printfn "%A" diffResult.Success
 printfn "%A" diffResult.Value.Value
