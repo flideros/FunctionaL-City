@@ -19,9 +19,7 @@ let mkInfiniteSet (rules : InfiniteSetRuleDictionary<'T>) symbol   =
             member _.Min          = rule.Min
             member _.Max          = rule.Max
             member _.Metadata     = 
-                [ SetTheoretic { Cardinality  = rule.Card
-                                 Countability = rule.Count
-                                 OrderType    = rule.Order_Type };
+                [ SetTheoretic rule.Metadata;
                 Provenance rule.Provenance;
                 Note rule.Note ]
             member _.IsClosedUnder _ = SetResult.Default()
@@ -32,9 +30,6 @@ let mkInfiniteSet (rules : InfiniteSetRuleDictionary<'T>) symbol   =
 // -----------------------------
 // Example: ℕ = { x | x ≥ 0 }
 // -----------------------------
-
-let intRules : InfiniteSetRuleDictionary<int> = (Map.ofList [])
-
 let addRule symbol rule (registry: InfiniteSetRuleDictionary<'T>) : InfiniteSetRuleDictionary<'T> =
     registry.Add(symbol, rule)
 
@@ -52,7 +47,7 @@ let natProvenance : Provenance =
       Note = "Declared ℕ as the set of natural numbers ≥ 0, formalized in ZFC and derived from Peano axioms." 
       Lineage = [] }
 
-let naturalNumbersSpec : InfiniteSetRule<int> =            
+let naturalNumbersSpec : InfiniteSetRule<int> =
     { Filter = fun n -> n >= 0;
       Generator = fun i -> i;
       Formula = Some natFormula;
@@ -60,9 +55,9 @@ let naturalNumbersSpec : InfiniteSetRule<int> =
       Max = None;
       Min = Some 0;
       Compare = Some compare
-      Card = Some Aleph0
-      Count = Some Countable
-      Order_Type = Some TotalOrder
+      Metadata = {Cardinality = Some Aleph0;
+                  Countability = Some Countable;
+                  OrderType = Some TotalOrder}
       Note = """ℕ, the set of natural numbers ≥ 0, originates from Giuseppe Peano's 1889 axioms, 
 which defined arithmetic using successor functions and induction. These axioms laid the 
 foundation for formal number theory. In the early 20th century, Ernst Zermelo introduced 
@@ -72,16 +67,10 @@ ordinal construction, where each natural number is defined as the set of all sma
 natural numbers. This civic declaration reflects that lineage: ℕ is countable, totally ordered, 
 and formally grounded in ZFC + Peano arithmetic.""" 
      }
-    
-// This map might be a muteable variable or a state variable up stream, but here we'll construct the map linearly.
-let naturalRules = intRules.Add  ("\u2115", naturalNumbersSpec) 
-
-let naturalNumbers  = mkInfiniteSet naturalRules "\u2115" 
-    
+ 
 // -----------------------------
 // Example: ℤ = all integers
 // -----------------------------
-
 let intPred = { Name = "isInteger"; Kind = PredicateKind; Arity = Some 1 }
 let intVar  = { Name = "x"; Kind = VariableKind; Arity = None }
 
@@ -103,23 +92,27 @@ let integersSpec : InfiniteSetRule<int> =
       Max = None;
       Min = None;
       Compare = Some compare
-      Card = Some Aleph0
-      Count = Some Countable
-      Order_Type = Some TotalOrder
+      Metadata = {Cardinality = Some Aleph0; 
+                  Countability = Some Countable;
+                  OrderType = Some TotalOrder}
       Note = """ℤ, the set of integers, extends ℕ by introducing additive inverses. It is constructed using 
 equivalence classes of ordered pairs of natural numbers: (a, b) represents the integer a − b. 
 This construction, formalized within ZFC, preserves total order and countability. ℤ includes zero, 
 positive naturals, and their negatives, forming a foundational ring for arithmetic and algebra.""" 
      }
 
-let int_Rules = naturalRules.Add  ("\u2124", integersSpec) 
 
-let integers = mkInfiniteSet int_Rules "\u2124"
+// Create a dictionary for infinite integer sets. This will be a state variable in an a state machine at some point.
+let intRules : InfiniteSetRuleDictionary<int> = (Map.ofList [("\u2115", naturalNumbersSpec);("\u2124", integersSpec)])
+
+// Create the ICivicSets from the rule set and symbol.
+let naturalNumbers  = mkInfiniteSet intRules "\u2115" 
+let integers = mkInfiniteSet intRules "\u2124"
+
 
 // -----------------------------
 // Example: ℚ = rationals
 // -----------------------------
-
 open System.Numerics
 
 let gcdInt (p:int) (q:int) : int =
@@ -520,11 +513,11 @@ printfn "%A" result.Success
 printfn "%A" result.Message
 printfn "%A" result.Value.Value.Elements
 //printfn "%A" result.Provenance
-printfn "%A" result.Value.Value.Metadata
+//printfn "%A" result.Value.Value.Metadata
 printfn "%A" result.Provenance.Note
 
 printfn " "
-let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult setA setB) :> ICivicResult<_>
+let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult naturalNumbers setA) :> ICivicResult<_>
 printfn "%A" diffResult.Message
 printfn "%A" diffResult.Success
 printfn "%A" diffResult.Value.Value

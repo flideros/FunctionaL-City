@@ -91,9 +91,7 @@ type InfiniteSetRule<'T> = {
     Min : 'T option
     Max : 'T option
     Compare : ('T -> 'T -> int) option
-    Card : Cardinality option
-    Count : Countability option
-    Order_Type : OrderType option
+    Metadata : SetTheoreticMetadata
     Note: string }
 
 type InfiniteSetRuleDictionary<'T> = Map<string, InfiniteSetRule<'T>>
@@ -275,6 +273,37 @@ module SetTheoreticMetadata =
         | None, None -> "Missing countability metadata."
 
 module Operations =     
+    
+    let differenceSpec<'T when 'T : equality> 
+        (specA: InfiniteSetRule<'T>) 
+        (specB: InfiniteSetRule<'T>) : InfiniteSetRule<'T> =
+            
+        let bStream = 
+            Seq.initInfinite specB.Generator
+            |> Seq.filter specB.Filter
+
+        let isInB x = bStream |> Seq.exists ((=) x)
+        {   Filter = fun x -> specA.Filter x && not (isInB x)
+
+            Generator = fun n ->
+                let rec next i =
+                    let candidate = specA.Generator i
+                    if specA.Filter candidate && not (isInB candidate)
+                    then candidate
+                    else next (i + 1)
+                next n
+
+            Formula = None
+            Provenance = Provenance.mkDerived "{specA.Provenance.SourceName} \\ {specA.Provenance.SourceName}" "setDifference" [Some specB.Provenance;Some specA.Provenance]
+            Max = None
+            Min = None
+            Compare = specA.Compare
+            Metadata = SetTheoreticMetadata.mergeSetTheoreticMetadata (Some specA.Metadata) (Some specB.Metadata) None
+            
+            Note = "This symbolic spec represents specA \\ specB, preserving order and countability."
+        }
+
+    
     /// <summary>
     /// Computes the set difference between two civic sets, returning all elements
     /// in <paramref name="this"/> that are not contained in <paramref name="other"/>.
@@ -311,13 +340,34 @@ module Operations =
             let derivedProv = Provenance.mkDerived sourceName operationNote provs
             derivedProv
         
-        let difference = 
+        let difference =
             match setComputability with
-            | FiniteEnumerable -> 
+            | FiniteEnumerable ->
                 this.Elements
                 |> Seq.filter (fun x -> not (other.Contains x))
-                //|> Seq.toList
-            | _ -> []
+            | PossiblyInfinite ->
+                match cardCountOther with
+                | Some (Finite _), _ ->
+                    // other is finite, so we can lazily filter this.Elements
+                    this.Elements
+                    |> Seq.filter (fun x -> not (other.Contains x))
+                | Some Aleph0, Some Countable ->
+                    // other is countable, we can still lazily filter
+                    this.Elements
+                    |> Seq.filter (fun x -> not (other.Contains x))
+                | Some Continuum, Some Countable ->
+                    // other is uncountable, but this.Elements is lazy
+                    this.Elements
+                    |> Seq.filter (fun x -> not (other.Contains x))
+                | Some Continuum, Some Uncountable ->
+                    // both are uncountable—still allow lazy filtering
+                    this.Elements
+                    |> Seq.filter (fun x -> not (other.Contains x))
+                | _, _ ->
+                    // unknown computability—fallback to empty or raise
+                    Seq.empty
+
+            | _ -> Seq.empty
         
         let diagnostics =
             [SetTheoreticMetadata.infiniteSetDiagnostics cardCountThis;
@@ -331,7 +381,7 @@ module Operations =
 
         match setComputability with
         | FiniteEnumerable -> SetResult.Succeed ( difference, message, prov )
-        | PossiblyInfinite 
+        | PossiblyInfinite  -> SetResult.Succeed ( difference, message, prov )
         | SymbolicOrUnsafe -> SetResult.FailWithValue ([], message, prov )
         
 module CivicSetConstructors =
