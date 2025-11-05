@@ -85,7 +85,7 @@ type CivicSetMetadataItem =
 
 type InfiniteSetRule<'T> = {
     Filter: 'T -> bool
-    Generator: int -> 'T
+    Generator: int -> 'T 
     Formula: Formula<Symbol> option
     Provenance: Provenance
     Min : 'T option
@@ -275,41 +275,54 @@ module SetTheoreticMetadata =
 module Operations =     
     
     let differenceSpec<'T when 'T : equality> 
+        (equivalenceDepth : int)
         (specA: InfiniteSetRule<'T>) 
-        (specB: InfiniteSetRule<'T>) : InfiniteSetRule<'T> =
-            
+        (specB: InfiniteSetRule<'T>) : InfiniteSetRule<'T> option =
+
+        let setEquality : bool =
+            Seq.zip (Seq.initInfinite(specA.Generator)) (Seq.initInfinite(specB.Generator))
+            |> Seq.take equivalenceDepth // civic cutoff: finite window
+            |> Seq.forall (fun (x, y) -> x = y)        
+
         let bStream = 
             Seq.initInfinite specB.Generator
             |> Seq.filter specB.Filter
 
         let isInB x = bStream |> Seq.exists ((=) x)
-        {   Filter = fun x -> specA.Filter x && not (isInB x)
 
-            Generator = fun n ->
-                let rec next i =
-                    let candidate = specA.Generator i
-                    if specA.Filter candidate && not (isInB candidate)
-                    then candidate
-                    else next (i + 1)
-                next n
+        match setEquality with
+        | true -> None
+        | false -> 
+            Some 
+                {   Filter = fun x -> 
+                        match setEquality with 
+                        | true -> false
+                        | false -> specA.Filter x && not (isInB x)
 
-            Formula = None
-            Provenance = Provenance.mkDerived "{specA.Provenance.SourceName} \\ {specA.Provenance.SourceName}" "setDifference" [Some specB.Provenance;Some specA.Provenance]
-            Max = None
-            Min = None
-            Compare = specA.Compare
-            Metadata = SetTheoreticMetadata.mergeSetTheoreticMetadata (Some specA.Metadata) (Some specB.Metadata) None
-            
-            Note = "This symbolic spec represents specA \\ specB, preserving order and countability."
-        }
+                    Generator = fun n ->
+                        let rec next i =
+                            let candidate = specA.Generator i
+                            match specA.Filter candidate && not (isInB candidate) with
+                            | true ->  candidate
+                            | false ->  next (i + 1)
+                        next n
 
+                    Formula = None
+                    Provenance = Provenance.mkDerived "{specA.Provenance.SourceName} \\ {specA.Provenance.SourceName}" "setDifference" [Some specB.Provenance;Some specA.Provenance]
+                    Max = None
+                    Min = None
+                    Compare = specA.Compare
+                    Metadata = SetTheoreticMetadata.mergeSetTheoreticMetadata (Some specA.Metadata) (Some specB.Metadata) None
+                    
+                    Note = "This symbolic spec represents specA \\ specB, preserving order and countability."
+                }
     
     /// <summary>
     /// Computes the set difference between two civic sets, returning all elements
     /// in <paramref name="this"/> that are not contained in <paramref name="other"/>.
     /// with provenance and infinite set diagnostics. Caller decides how to construct the civic set.
     /// </summary>
-    let setDifferenceResult (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T seq> =
+    let setDifferenceResult (equivalenceDepth : int) (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T seq> =
         
         let cardCountThis  = SetTheoreticMetadata.extractCardinalityAndCountability this.Metadata
         let cardCountOther = SetTheoreticMetadata.extractCardinalityAndCountability other.Metadata
@@ -340,6 +353,14 @@ module Operations =
             let derivedProv = Provenance.mkDerived sourceName operationNote provs
             derivedProv
         
+        let testSetEquality (a: seq<'T>) (b: seq<'T>) : bool =
+            match this.Symbol = other.Symbol with 
+            | true -> true
+            | false ->
+                Seq.zip a b
+                |> Seq.take equivalenceDepth // civic cutoff: finite window
+                |> Seq.forall (fun (x, y) -> x = y)
+
         let difference =
             match setComputability with
             | FiniteEnumerable ->
@@ -353,20 +374,29 @@ module Operations =
                     |> Seq.filter (fun x -> not (other.Contains x))
                 | Some Aleph0, Some Countable ->
                     // other is countable, we can still lazily filter
-                    this.Elements
-                    |> Seq.filter (fun x -> not (other.Contains x))
+                    match testSetEquality this.Elements other.Elements with
+                    | true -> Seq.empty
+                    | false -> 
+                        this.Elements
+                        |> Seq.filter (fun x -> not (other.Contains x))
                 | Some Continuum, Some Countable ->
                     // other is uncountable, but this.Elements is lazy
-                    this.Elements
-                    |> Seq.filter (fun x -> not (other.Contains x))
+                    match testSetEquality this.Elements other.Elements with
+                    | true -> Seq.empty
+                    | false -> 
+                        this.Elements
+                        |> Seq.filter (fun x -> not (other.Contains x))
                 | Some Continuum, Some Uncountable ->
                     // both are uncountable—still allow lazy filtering
-                    this.Elements
-                    |> Seq.filter (fun x -> not (other.Contains x))
+                    match testSetEquality this.Elements other.Elements with
+                    | true -> Seq.empty
+                    | false -> 
+                        this.Elements
+                        |> Seq.filter (fun x -> not (other.Contains x))
                 | _, _ ->
                     // unknown computability—fallback to empty or raise
                     Seq.empty
-
+                    
             | _ -> Seq.empty
         
         let diagnostics =

@@ -20,8 +20,8 @@ let mkInfiniteSet (rules : InfiniteSetRuleDictionary<'T>) symbol   =
             member _.Max          = rule.Max
             member _.Metadata     = 
                 [ SetTheoretic rule.Metadata;
-                Provenance rule.Provenance;
-                Note rule.Note ]
+                  Provenance rule.Provenance;
+                  Note rule.Note ]
             member _.IsClosedUnder _ = SetResult.Default()
             member _.Implies _       = SetResult.Default()
             member _.EquivalentTo _  = SetResult.Default() }
@@ -103,10 +103,11 @@ positive naturals, and their negatives, forming a foundational ring for arithmet
 
 
 // Create a dictionary for infinite integer sets. This will be a state variable in an a state machine at some point.
-let intRules : InfiniteSetRuleDictionary<int> = (Map.ofList [("\u2115", naturalNumbersSpec);("\u2124", integersSpec)])
+let intRules : InfiniteSetRuleDictionary<int> = (Map.ofList [("\u2115", naturalNumbersSpec);("otherNaturals", naturalNumbersSpec);("\u2124", integersSpec)])
 
 // Create the ICivicSets from the rule set and symbol.
 let naturalNumbers  = mkInfiniteSet intRules "\u2115" 
+let otherNaturalNumbers  = mkInfiniteSet intRules "otherNaturals" 
 let integers = mkInfiniteSet intRules "\u2124"
 
 
@@ -390,7 +391,7 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Proven
                               prov ]
         member _.IsClosedUnder _ = SetResult.Default()
         member this.Implies (other: ICivicSet<int>) : SetResult<ICivicSet<int>> =            
-            let difference = (Operations.setDifferenceResult this other) :> ICivicResult<_>
+            let difference = (Operations.setDifferenceResult 100 this other) :> ICivicResult<_> 
             
             let allImply = Seq.isEmpty difference.Value.Value && difference.Success
 
@@ -441,7 +442,7 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
                                            Lineage = [] } ]
         member _.IsClosedUnder _ = SetResult.Default()
         member this.Implies (other: ICivicSet<String>) : SetResult<ICivicSet<string>> =
-            let difference = (Operations.setDifferenceResult this other) :> ICivicResult<_>
+            let difference = (Operations.setDifferenceResult 100 this other) :> ICivicResult<_>
             let diffSet = (makeSimpleStringSet "Counterexample set" (Seq.toList difference.Value.Value))
             let allImply = Seq.isEmpty difference.Value.Value && difference.Success
 
@@ -517,7 +518,7 @@ printfn "%A" result.Value.Value.Elements
 printfn "%A" result.Provenance.Note
 
 printfn " "
-let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult naturalNumbers setA) :> ICivicResult<_>
+let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult 100 integers naturalNumbers) :> ICivicResult<_>
 printfn "%A" diffResult.Message
 printfn "%A" diffResult.Success
 printfn "%A" diffResult.Value.Value
