@@ -83,6 +83,15 @@ type CivicSetMetadataItem =
     | Note of string
     | Custom of string * string // extension point
 
+/// <summary>
+/// Symbolic specification for an infinite civic set.
+/// Encapsulates generator, filter, optional formula, provenance, and ordering metadata.
+/// </summary>
+/// <typeparam name="T">Concrete element type of the set.</typeparam>
+/// <remarks>
+/// Serves as a specification for infinite sets, that can be built from a dictionary
+/// that manages the specifications and their unique symbol.
+/// </remarks>
 type InfiniteSetRule<'T> = {
     Filter: 'T -> bool
     Generator: int -> 'T 
@@ -94,8 +103,25 @@ type InfiniteSetRule<'T> = {
     Metadata : SetTheoreticMetadata
     Note: string }
 
+/// <summary>
+/// Dictionary mapping symbolic identifiers to infinite set rules.
+/// </summary>
+/// <typeparam name="T">Concrete element type of the sets.</typeparam>
+/// <remarks>
+/// Enables reuse and lookup of infinite set specifications by symbolic key,
+/// scaffolding registry-like behavior for remixers.
+/// </remarks>
 type InfiniteSetRuleDictionary<'T> = Map<string, InfiniteSetRule<'T>>
 
+/// <summary>
+/// Result wrapper for civic set operations, carrying optional value,
+/// success flag, diagnostic message, and provenance.
+/// </summary>
+/// <typeparam name="T">Type of the result value.</typeparam>
+/// <remarks>
+/// Provides constructors for success/failure and preserves lineage through provenance.
+/// Useful for narrating both successful and failed ordinance applications.
+/// </remarks>
 type SetResult<'T>(value:'T option, success:bool, message:string option, provenance:Provenance) =
     interface ICivicResult<'T> with
         member _.Value = value
@@ -211,8 +237,18 @@ module SetTheoreticMetadata =
         | Some TotalOrder, Some PartialOrder
         | Some PartialOrder, Some TotalOrder -> Some PartialOrder
 
-    /// Merge two optional SetTheoreticMetadata values into one following dominance rules.
-    /// If both inputs are None -> None
+    /// <summary>
+    /// Merges two optional SetTheoreticMetadata values into one,
+    /// applying dominance rules for cardinality, countability, and order type.
+    /// </summary>
+    /// <param name="left">First metadata option.</param>
+    /// <param name="right">Second metadata option.</param>
+    /// <param name="elementCount">Optional element count for finite cases.</param>
+    /// <returns>Merged SetTheoreticMetadata record.</returns>
+    /// <remarks>
+    /// Ensures signage overlays reflect the broadest applicable classification,
+    /// preserving narratability and lawful lineage.
+    /// </remarks>
     let mergeSetTheoreticMetadata 
         (left: SetTheoreticMetadata option) 
         (right: SetTheoreticMetadata option) 
@@ -274,6 +310,24 @@ module SetTheoreticMetadata =
 
 module Operations =     
     
+    /// <summary>
+    /// Builds a symbolic specification for the set difference A \ B
+    /// using generator/filters of two infinite set rules.
+    /// </summary>
+    /// <typeparam name="T">Concrete element type of the sets.</typeparam>
+    /// <param name="equivalenceDepth">Finite cutoff depth for symbolic equality testing.</param>
+    /// <param name="specA">First infinite set rule (minuend).</param>
+    /// <param name="specB">Second infinite set rule (subtrahend).</param>
+    /// <returns>
+    /// Optionally returns a new InfiniteSetRule representing A \ B,
+    /// or None if the sets are symbolically equal within the cutoff.
+    /// </returns>
+    /// <remarks>
+    /// The equivalence check is approximate: if the first <paramref name="equivalenceDepth"/> elements
+    /// match, the sets are treated as equal and the difference collapses to None.
+    /// This prevents infinite comparison loops while still giving remixers a narratable cutoff.
+    /// In pure set theory, equality is absolute; in computation, it must be approximated.
+    /// </remarks>
     let differenceSpec<'T when 'T : equality> 
         (equivalenceDepth : int)
         (specA: InfiniteSetRule<'T>) 
@@ -320,8 +374,26 @@ module Operations =
     /// <summary>
     /// Computes the set difference between two civic sets, returning all elements
     /// in <paramref name="this"/> that are not contained in <paramref name="other"/>.
-    /// with provenance and infinite set diagnostics. Caller decides how to construct the civic set.
+    /// Preserves provenance and emits infinite set diagnostics.
     /// </summary>
+    /// <param name="equivalenceDepth">
+    /// Finite cutoff depth for symbolic equality testing. If the first N elements of both sets
+    /// are equal, the sets are considered equivalent and the result collapses to empty.
+    /// </param>
+    /// <param name="this">The minuend civic set (A).</param>
+    /// <param name="other">The subtrahend civic set (B).</param>
+    /// <returns>
+    /// A <see cref="SetResult{T}"/> wrapping the sequence of elements in A \ B,
+    /// with provenance and diagnostic message.
+    /// </returns>
+    /// <remarks>
+    /// - Uses <paramref name="equivalenceDepth"/> to avoid infinite comparisons when both sets are infinite.  
+    /// - If sets are symbolically equal within the cutoff, returns an empty sequence.  
+    /// - Computability classification (FiniteEnumerable, PossiblyInfinite, SymbolicOrUnsafe) determines
+    /// whether the result is lazily filterable or must be treated as symbolic.  
+    /// - Diagnostics are attached to the result message to guide remixers on metadata consistency.
+    /// - In pure set theory, equality is absolute; in computation, it must be approximated.
+    /// </remarks>
     let setDifferenceResult (equivalenceDepth : int) (this: ICivicSet<'T>) (other: ICivicSet<'T>) : SetResult<'T seq> =
         
         let cardCountThis  = SetTheoreticMetadata.extractCardinalityAndCountability this.Metadata
@@ -411,8 +483,8 @@ module Operations =
 
         match setComputability with
         | FiniteEnumerable -> SetResult.Succeed ( difference, message, prov )
-        | PossiblyInfinite  -> SetResult.Succeed ( difference, message, prov )
-        | SymbolicOrUnsafe -> SetResult.FailWithValue ([], message, prov )
+        | PossiblyInfinite -> SetResult.Succeed ( difference, message, prov )
+        | SymbolicOrUnsafe -> SetResult.FailWithValue (difference, message, prov )
         
 module CivicSetConstructors =
     /// <summary>
@@ -568,8 +640,13 @@ module CivicSetConstructors =
             member _.EquivalentTo _ = SetResult.Default() }        
 
     /// <summary>
-    /// Wraps a lifted union into the CivicUnion tagged representation.
+    /// Wraps a lifted union into the CivicUnion tagged representation,
+    /// distinguishing homotypic from heterotypic unions.
     /// </summary>
+    /// <typeparam name="A">Element type of the first set.</typeparam>
+    /// <typeparam name="B">Element type of the second set.</typeparam>
+    /// <param name="liftedSet">Lifted union set to wrap.</param>
+    /// <returns>CivicUnion discriminated union value.</returns>
     let wrapCivicUnion<'A,'B>
         (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
         : CivicUnion<'A,'B> =
