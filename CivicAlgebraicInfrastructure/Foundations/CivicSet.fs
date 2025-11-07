@@ -92,7 +92,7 @@ type CivicSetMetadataItem =
 /// Serves as a specification for infinite sets, that can be built from a dictionary
 /// that manages the specifications and their unique symbol.
 /// </remarks>
-type InfiniteSetRule<'T> = {
+type CivicSetRule<'T> = {
     Filter: 'T -> bool
     Generator: int -> 'T 
     Formula: Formula<Symbol> option
@@ -111,7 +111,7 @@ type InfiniteSetRule<'T> = {
 /// Enables reuse and lookup of infinite set specifications by symbolic key,
 /// scaffolding registry-like behavior for remixers.
 /// </remarks>
-type InfiniteSetRuleDictionary<'T> = Map<string, InfiniteSetRule<'T>>
+type CivicSetRuleDictionary<'T> = Map<string, CivicSetRule<'T>>
 
 /// <summary>
 /// Result wrapper for civic set operations, carrying optional value,
@@ -310,66 +310,38 @@ module SetTheoreticMetadata =
 
 module Operations =     
     
-    /// <summary>
-    /// Builds a symbolic specification for the set difference A \ B
-    /// using generator/filters of two infinite set rules.
-    /// </summary>
-    /// <typeparam name="T">Concrete element type of the sets.</typeparam>
-    /// <param name="equivalenceDepth">Finite cutoff depth for symbolic equality testing.</param>
-    /// <param name="specA">First infinite set rule (minuend).</param>
-    /// <param name="specB">Second infinite set rule (subtrahend).</param>
-    /// <returns>
-    /// Optionally returns a new InfiniteSetRule representing A \ B,
-    /// or None if the sets are symbolically equal within the cutoff.
-    /// </returns>
-    /// <remarks>
-    /// The equivalence check is approximate: if the first <paramref name="equivalenceDepth"/> elements
-    /// match, the sets are treated as equal and the difference collapses to None.
-    /// This prevents infinite comparison loops while still giving remixers a narratable cutoff.
-    /// In pure set theory, equality is absolute; in computation, it must be approximated.
-    /// </remarks>
-    let differenceSpec<'T when 'T : equality> 
-        (equivalenceDepth : int)
-        (specA: InfiniteSetRule<'T>) 
-        (specB: InfiniteSetRule<'T>) : InfiniteSetRule<'T> option =
-
-        let setEquality : bool =
-            Seq.zip (Seq.initInfinite(specA.Generator)) (Seq.initInfinite(specB.Generator))
-            |> Seq.take equivalenceDepth // civic cutoff: finite window
-            |> Seq.forall (fun (x, y) -> x = y)        
+    let SetDifferenceFromTemplatesAndResult<'T when 'T : equality> 
+        (specA: ICivicSet<'T>) 
+        (specB: ICivicSet<'T>) 
+        (result: ICivicResult<seq<'T>>) 
+        (symbol: string): ICivicSet<'T> =
 
         let bStream = 
-            Seq.initInfinite specB.Generator
-            |> Seq.filter specB.Filter
+            specB.Elements
+            |> Seq.filter specB.Contains
 
         let isInB x = bStream |> Seq.exists ((=) x)
 
-        match setEquality with
-        | true -> None
-        | false -> 
-            Some 
-                {   Filter = fun x -> 
-                        match setEquality with 
-                        | true -> false
-                        | false -> specA.Filter x && not (isInB x)
+        let elements = 
+            match result.Value with
+            | None -> Seq.empty
+            | Some s -> s
 
-                    Generator = fun n ->
-                        let rec next i =
-                            let candidate = specA.Generator i
-                            match specA.Filter candidate && not (isInB candidate) with
-                            | true ->  candidate
-                            | false ->  next (i + 1)
-                        next n
+        let pickSetTheoreticMetadata (meta: CivicSetMetadataItem list) : SetTheoreticMetadata option =
+                meta |> List.tryPick (function SetTheoretic p -> Some p | _ -> None)
 
-                    Formula = None
-                    Provenance = Provenance.mkDerived "{specA.Provenance.SourceName} \\ {specA.Provenance.SourceName}" "setDifference" [Some specB.Provenance;Some specA.Provenance]
-                    Max = None
-                    Min = None
-                    Compare = specA.Compare
-                    Metadata = SetTheoreticMetadata.mergeSetTheoreticMetadata (Some specA.Metadata) (Some specB.Metadata) None
-                    
-                    Note = "This symbolic spec represents specA \\ specB, preserving order and countability."
-                }
+        { new ICivicSet<'T> with
+            member _.Symbol       = Some symbol
+            member _.Formula      = None
+            member _.Contains x = specA.Contains x && not (isInB x)
+            member _.Elements     = elements
+            member _.Compare      = specA.Compare
+            member _.Min          = None
+            member _.Max          = None
+            member _.Metadata     = [SetTheoretic(SetTheoreticMetadata.mergeSetTheoreticMetadata (pickSetTheoreticMetadata specA.Metadata) (pickSetTheoreticMetadata specB.Metadata) None)]
+            member _.IsClosedUnder _ = SetResult.Default()
+            member this.Implies other       = specA.Implies other
+            member _.EquivalentTo _  = SetResult.Default() }
     
     /// <summary>
     /// Computes the set difference between two civic sets, returning all elements
@@ -433,6 +405,17 @@ module Operations =
                 |> Seq.take equivalenceDepth // civic cutoff: finite window
                 |> Seq.forall (fun (x, y) -> x = y)
 
+        /// Checks whether a CivicSet yields only contained members within a bounded equivalence depth.
+        /// If true, the CivicSet contributes no novel members—its narrative is exhausted at that depth.
+        let isEmptyWithinDepth (generator: seq<'T>) (contains: 'T -> bool) (depth:int) : bool =
+            generator
+            |> Seq.truncate depth
+            |> Seq.forall (fun x -> (contains x))
+
+        let generator =
+            this.Elements
+            |> Seq.filter (fun x -> not (other.Contains x))
+
         let difference =
             match setComputability with
             | FiniteEnumerable ->
@@ -446,30 +429,27 @@ module Operations =
                     |> Seq.filter (fun x -> not (other.Contains x))
                 | Some Aleph0, Some Countable ->
                     // other is countable, we can still lazily filter
-                    match testSetEquality this.Elements other.Elements with
-                    | true -> Seq.empty
-                    | false -> 
-                        this.Elements
-                        |> Seq.filter (fun x -> not (other.Contains x))
+                    match testSetEquality this.Elements other.Elements ||
+                          isEmptyWithinDepth this.Elements other.Contains equivalenceDepth with
+                    | true -> Seq.empty 
+                    | false -> generator                       
                 | Some Continuum, Some Countable ->
                     // other is uncountable, but this.Elements is lazy
-                    match testSetEquality this.Elements other.Elements with
-                    | true -> Seq.empty
-                    | false -> 
-                        this.Elements
-                        |> Seq.filter (fun x -> not (other.Contains x))
+                    match testSetEquality this.Elements other.Elements ||
+                          isEmptyWithinDepth this.Elements other.Contains equivalenceDepth with
+                    | true -> Seq.empty 
+                    | false -> generator
                 | Some Continuum, Some Uncountable ->
                     // both are uncountable—still allow lazy filtering
-                    match testSetEquality this.Elements other.Elements with
-                    | true -> Seq.empty
-                    | false -> 
-                        this.Elements
-                        |> Seq.filter (fun x -> not (other.Contains x))
+                    match testSetEquality this.Elements other.Elements ||
+                          isEmptyWithinDepth this.Elements other.Contains equivalenceDepth with
+                    | true -> Seq.empty 
+                    | false -> generator
                 | _, _ ->
                     // unknown computability—fallback to empty or raise
-                    Seq.empty
+                    Seq.empty 
                     
-            | _ -> Seq.empty
+            | _ -> Seq.empty 
         
         let diagnostics =
             [SetTheoreticMetadata.infiniteSetDiagnostics cardCountThis;
@@ -484,8 +464,8 @@ module Operations =
         match setComputability with
         | FiniteEnumerable -> SetResult.Succeed ( difference, message, prov )
         | PossiblyInfinite -> SetResult.Succeed ( difference, message, prov )
-        | SymbolicOrUnsafe -> SetResult.FailWithValue (difference, message, prov )
-        
+        | SymbolicOrUnsafe -> SetResult.FailWithValue ( difference, message, prov )
+
 module CivicSetConstructors =
     /// <summary>
     /// Extracts the first Provenance entry from metadata if present.
@@ -831,4 +811,148 @@ module CivicSetConstructors =
         | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
         | Heterotypic b-> None
 
+    let defaultSet   =
+        { new ICivicSet<'T> with
+                member _.Symbol       = None
+                member _.Formula      = None
+                member _.Contains _ = false
+                member _.Elements     = Seq.empty
+                member _.Compare      = None
+                member _.Min          = None
+                member _.Max          = None
+                member _.Metadata     = []
+                member _.IsClosedUnder _ = SetResult.Default()
+                member _.Implies _       = SetResult.Default()
+                member _.EquivalentTo _  = SetResult.Default() }
 
+    let rec private mkFiniteSet 
+        (symbol: string) 
+        (vals: 'T list) 
+        (provOption: Provenance option) 
+        (ruleOption: CivicSetRule<'T> option)
+        : ICivicSet<'T> =
+        
+        let setSym = { Name = symbol; Kind = ConstantKind; Arity = None }
+        let universalFormula = Formulae.memberPredicateForSymbol setSym
+
+        let lineage =
+            match ruleOption with
+            | None -> []
+            | Some r -> [r.Provenance]
+        
+        let order = 
+            match ruleOption with
+            | None -> None
+            | Some r -> r.Metadata.OrderType
+
+        let comp = 
+            match ruleOption with
+            | None -> None
+            | Some r -> r.Compare
+
+        let prov =
+                    match provOption with 
+                    | None -> Provenance
+                                { SourceName = symbol; 
+                                Step = 2; 
+                                Timestamp = Some DateTime.UtcNow; 
+                                Note = "original"; 
+                                Lineage = lineage }
+                    | Some p -> Provenance p
+
+        { new ICivicSet<'T> with
+            member _.Symbol = Some symbol
+            member _.Formula = Some universalFormula
+            member _.Contains x = List.contains x vals
+            member _.Elements = vals :> seq<'T>
+            member _.Compare = comp
+            member _.Min = if List.isEmpty vals then None else Some (List.min vals)
+            member _.Max = if List.isEmpty vals then None else Some (List.max vals)
+            member _.Metadata = [ Tag $"FiniteSet:{symbol}"; 
+                                  SetTheoretic { Cardinality  = Some (Finite vals.Length)
+                                                 Countability = Some Countable
+                                                 OrderType    = order }
+                                  prov ]
+            member _.IsClosedUnder _ = SetResult.Default()
+            member this.Implies (other: ICivicSet<'T>) : SetResult<ICivicSet<'T>> =
+                let difference = (Operations.setDifferenceResult 100 this other) :> ICivicResult<_>
+                let diffSet = mkFiniteSet "Counterexample set" (Seq.toList difference.Value.Value) (provOption) (ruleOption)
+                let allImply = Seq.isEmpty difference.Value.Value && difference.Success
+
+                let prov =
+                    { Provenance.empty with
+                        SourceName = sprintf "Implication (%s ⇒ %s)"
+                                        (defaultArg this.Symbol  "A")
+                                        (defaultArg other.Symbol "B")
+                        Step = difference.Provenance.Step
+                        Note = 
+                            match allImply with 
+                            | true -> "Implication holds"
+                            | false -> sprintf "Implication fails: %d counterexample(s)" (Seq.toList difference.Value.Value).Length }
+
+                match allImply with
+                | true -> SetResult.Succeed(diffSet,"Implication holds", prov)
+                | false -> 
+                    SetResult.FailWithValue(diffSet,"Implication fails with counterexamples", prov)
+            member _.EquivalentTo _ = SetResult.Default() }
+
+    let private mkInfiniteSetFromDictionary 
+        (rules : CivicSetRuleDictionary<'T>) 
+        symbol   
+        (equivalenceDepth:int) =
+
+        match rules.TryFind symbol with
+            | Some rule -> 
+            Some
+                { new ICivicSet<'T> with
+                    member _.Symbol       = Some symbol
+                    member _.Formula      = rule.Formula
+                    member _.Contains n  = rule.Filter n
+                    member _.Elements     = Seq.initInfinite rule.Generator
+                    member _.Compare      = rule.Compare
+                    member _.Min          = rule.Min
+                    member _.Max          = rule.Max
+                    member _.Metadata     = 
+                        [ SetTheoretic rule.Metadata;
+                          Provenance rule.Provenance;
+                          Note rule.Note ]
+                    member _.IsClosedUnder _ = SetResult.Default()
+                    member this.Implies (other: ICivicSet<'T>) : SetResult<ICivicSet<'T>> =                        
+                        // Construct the counterexample set as a difference
+                        let diffResult = Operations.setDifferenceResult equivalenceDepth this other :> ICivicResult<_>
+                        
+                        // Determine implication status
+                        let allImply = Seq.isEmpty diffResult.Value.Value && diffResult.Success
+
+                        let prov =
+                            { Provenance.empty with
+                                SourceName = sprintf "Implication (%s ⇒ %s)"
+                                                (defaultArg this.Symbol  "A")
+                                                (defaultArg other.Symbol "B")
+                                Step = diffResult.Provenance.Step
+                                Note = 
+                                    match allImply with 
+                                    | true -> "Implication holds"
+                                    | false -> sprintf "Implication fails"}
+
+                        // Wrap as a civic set for narration 
+                        let counterSet = Operations.SetDifferenceFromTemplatesAndResult this other diffResult "Implication Counter Set"
+
+                        match allImply with
+                        | true -> SetResult.Succeed(counterSet,"Implication holds", prov)
+                        | false -> 
+                            SetResult.FailWithValue(counterSet,"Implication fails with counterexamples", prov)
+                    member _.EquivalentTo _  = SetResult.Default() }
+                    | None -> None //failwith $"Symbol {symbol} not found in registry."
+
+
+    // Public Constructors 
+    let infiniteSet (rules : CivicSetRuleDictionary<'T>) symbol   = mkInfiniteSetFromDictionary rules symbol
+    let finiteSet 
+        (symbol: string) 
+        (vals: 'T list) 
+        (provOption: Provenance option) 
+        (ruleOption: CivicSetRule<'T> option)
+        : ICivicSet<'T> = mkFiniteSet symbol vals provOption ruleOption
+        
+            

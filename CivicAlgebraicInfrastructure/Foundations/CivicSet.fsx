@@ -1,36 +1,18 @@
 #load "Primitives.fs"
 #load "FirstOrderLogic.fs"
-#load "CivicSet.fs"
+#load "CivicSet.fs" 
 
 open System
 open CivicAlgebraicInfrastructure.Foundations.Primitives
 open CivicAlgebraicInfrastructure.Foundations.FOL
 open CivicAlgebraicInfrastructure.Foundations.CivicSet
 
-let mkInfiniteSet (rules : InfiniteSetRuleDictionary<'T>) symbol   =
-    match rules.TryFind symbol with
-    | Some rule -> 
-        { new ICivicSet<'T> with
-            member _.Symbol       = Some symbol
-            member _.Formula      = rule.Formula
-            member _.Contains n  = rule.Filter n
-            member _.Elements     = Seq.initInfinite rule.Generator
-            member _.Compare      = rule.Compare
-            member _.Min          = rule.Min
-            member _.Max          = rule.Max
-            member _.Metadata     = 
-                [ SetTheoretic rule.Metadata;
-                  Provenance rule.Provenance;
-                  Note rule.Note ]
-            member _.IsClosedUnder _ = SetResult.Default()
-            member _.Implies _       = SetResult.Default()
-            member _.EquivalentTo _  = SetResult.Default() }
-    | None -> failwith $"Symbol {symbol} not found in registry."
+let equivalenceDepth = 1000
 
 // -----------------------------
 // Example: ℕ = { x | x ≥ 0 }
 // -----------------------------
-let addRule symbol rule (registry: InfiniteSetRuleDictionary<'T>) : InfiniteSetRuleDictionary<'T> =
+let addRule symbol rule (registry: CivicSetRuleDictionary<'T>) : CivicSetRuleDictionary<'T> =
     registry.Add(symbol, rule)
 
 let geq = { Name = "≥"; Kind = PredicateKind; Arity = Some 2}
@@ -47,7 +29,7 @@ let natProvenance : Provenance =
       Note = "Declared ℕ as the set of natural numbers ≥ 0, formalized in ZFC and derived from Peano axioms." 
       Lineage = [] }
 
-let naturalNumbersSpec : InfiniteSetRule<int> =
+let naturalNumbersSpec : CivicSetRule<int> =
     { Filter = fun n -> n >= 0;
       Generator = fun i -> i;
       Formula = Some natFormula;
@@ -84,7 +66,7 @@ let intProvenance : Provenance =
       Note = "Declared ℤ as the set of integers, constructed from ℕ using equivalence classes of ordered pairs." 
       Lineage = [] }
 
-let integersSpec : InfiniteSetRule<int> =            
+let integersSpec : CivicSetRule<int> =            
     { Filter = fun n -> true;
       Generator = fun n -> if n % 2 = 0 then n/2 else -(n/2 + 1);
       Formula = Some intFormula;
@@ -103,12 +85,13 @@ positive naturals, and their negatives, forming a foundational ring for arithmet
 
 
 // Create a dictionary for infinite integer sets. This will be a state variable in an a state machine at some point.
-let intRules : InfiniteSetRuleDictionary<int> = (Map.ofList [("\u2115", naturalNumbersSpec);("otherNaturals", naturalNumbersSpec);("\u2124", integersSpec)])
+let intRules : CivicSetRuleDictionary<int> = (Map.ofList [("\u2115", naturalNumbersSpec);("otherNaturals", naturalNumbersSpec);("\u2124", integersSpec)])
 
+let defaultS = CivicSetConstructors.defaultSet :> ICivicSet<int>
 // Create the ICivicSets from the rule set and symbol.
-let naturalNumbers  = mkInfiniteSet intRules "\u2115" 
-let otherNaturalNumbers  = mkInfiniteSet intRules "otherNaturals" 
-let integers = mkInfiniteSet intRules "\u2124"
+let naturalNumbers  = CivicSetConstructors.infiniteSet intRules "\u2115" equivalenceDepth |> Option.defaultValue defaultS 
+let otherNaturalNumbers  = CivicSetConstructors.infiniteSet intRules "otherNaturals" equivalenceDepth |> Option.defaultValue defaultS
+let integers = CivicSetConstructors.infiniteSet intRules "\u2124" equivalenceDepth |> Option.defaultValue defaultS
 
 
 // -----------------------------
@@ -364,7 +347,7 @@ let civicSetInspectorReport (set: ICivicSet<'C> option) : string =
 printfn "%s" (civicSetInspectorReport (Some naturalNumbers))
 
 // ---------------------------
-// Sample ICivicSet implementations for testing
+// Sample ICivicSet implementations for testing 
 // ---------------------------
 let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Provenance option) : ICivicSet<int> =
     let prov =
@@ -396,7 +379,7 @@ let rec makeSimpleNaturalSet (name: string) (vals: int list) (provOption: Proven
             let allImply = Seq.isEmpty difference.Value.Value && difference.Success
 
             let impProv =
-                match provOption with 
+                match provOption with  
                 | None -> 
                     { Provenance.empty with
                         SourceName = sprintf "Implication (%s ⇒ %s)"
@@ -463,8 +446,9 @@ let rec makeSimpleStringSet (name: string) (vals: string list) : ICivicSet<strin
                 SetResult.FailWithValue(diffSet,"Implication fails with counterexamples", prov)
         member _.EquivalentTo _ = SetResult.Default() }
 
-let setA = makeSimpleNaturalSet "Nat" [1;2;3;4;5] None
-let setB = makeSimpleNaturalSet "Odds" [1;3;5;7;9] None
+let naturalNumberRules = intRules.Item "\u2115"
+let setA = CivicSetConstructors.finiteSet  "Nat" [1;2;3;4;5] None (Some naturalNumbersSpec)
+let setB = CivicSetConstructors.finiteSet "Odds" [1;3;5;7;9] None (Some naturalNumbersSpec)
 let setC = makeSimpleStringSet "String" ["A";"B";"C"]
 
 let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB 
@@ -509,7 +493,7 @@ printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
 printfn " "    
-let result = setB.Implies(naturalNumbers):> ICivicResult<_>
+let result = naturalNumbers.Implies(integers):> ICivicResult<_>
 printfn "%A" result.Success
 printfn "%A" result.Message
 printfn "%A" result.Value.Value.Elements
@@ -518,9 +502,9 @@ printfn "%A" result.Value.Value.Elements
 printfn "%A" result.Provenance.Note
 
 printfn " "
-let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult 100 integers naturalNumbers) :> ICivicResult<_>
+let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult equivalenceDepth integers naturalNumbers) :> ICivicResult<_>
 printfn "%A" diffResult.Message
 printfn "%A" diffResult.Success
-printfn "%A" diffResult.Value.Value
+printfn "%A" diffResult.Value
 printfn "%A" diffResult.Provenance.Note
 printfn "%A" diffResult.Provenance.SourceName
