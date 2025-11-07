@@ -496,9 +496,9 @@ printfn " "
 
 // Test Imply and Difference
 
+printfn "Implication Test: naturalNumbers ⇒ integers"
 let implicationResult = naturalNumbers.Implies(integers) :> ICivicResult<_>
 
-printfn "Implication Test: naturalNumbers ⇒ integers"
 printfn "Success: %b" implicationResult.Success
 printfn "Message: %A" implicationResult.Message
 printfn "Provenance Note: %s" implicationResult.Provenance.Note
@@ -512,12 +512,12 @@ match implicationResult.Value with
     printfn "No CivicSet yielded."
 printfn " " 
 
+printfn "Implication Test: integers ⇒ naturalNumbers"
 let implicationResult2 = integers.Implies(naturalNumbers) :> ICivicResult<_>
 
-printfn "Implication Test: integers ⇒ naturalNumbers"
 printfn "Success: %b" implicationResult2.Success
 printfn "Message: %A" implicationResult2.Message
-printfn "Provenance Note: %s" implicationResult2.Provenance.Note
+printfn "Provenance Note: %A" implicationResult2.Provenance//.Note
 
 match implicationResult2.Value with
 | Some civicSet ->
@@ -528,12 +528,12 @@ match implicationResult2.Value with
     printfn "No CivicSet yielded."
 printfn " " 
 
+printfn "Implication Test: setA ⇒ setB"
 let implicationResult3 = setA.Implies(setB) :> ICivicResult<_>
 
-printfn "Implication Test: setA ⇒ setB"
 printfn "Success: %b" implicationResult3.Success
 printfn "Message: %A" implicationResult3.Message
-printfn "Provenance Note: %s" implicationResult3.Provenance.Note
+printfn "Provenance Note: %A" implicationResult3.Provenance//.Note
 
 match implicationResult3.Value with
 | Some civicSet ->
@@ -565,7 +565,7 @@ let diffResult2 = Operations.setDifferenceResult equivalenceDepth setA naturalNu
 printfn "Success: %b" diffResult2.Success
 printfn "Message: %A" diffResult2.Message
 printfn "Provenance Note: %s" diffResult2.Provenance.Note
-printfn "Provenance Source: %s" diffResult2.Provenance.SourceName
+printfn "Provenance Source: %A" diffResult2.Provenance.SourceName
 
 match diffResult2.Value with
 | Some seqVal ->
@@ -580,7 +580,7 @@ let diffResult3 = Operations.setDifferenceResult equivalenceDepth naturalNumbers
 printfn "Success: %b" diffResult3.Success
 printfn "Message: %A" diffResult3.Message
 printfn "Provenance Note: %s" diffResult3.Provenance.Note
-printfn "Provenance Source: %s" diffResult3.Provenance.SourceName
+printfn "Provenance Source: %A" diffResult3.Provenance.SourceName
 
 match diffResult3.Value with
 | Some seqVal ->

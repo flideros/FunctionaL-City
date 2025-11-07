@@ -355,7 +355,7 @@ module Operations =
             member _.Compare      = specA.Compare
             member _.Min          = None
             member _.Max          = None
-            member _.Metadata     = [SetTheoretic(SetTheoreticMetadata.mergeSetTheoreticMetadata (pickSetTheoreticMetadata specA.Metadata) (pickSetTheoreticMetadata specB.Metadata) None)]
+            member _.Metadata     = [Provenance result.Provenance;SetTheoretic(SetTheoreticMetadata.mergeSetTheoreticMetadata (pickSetTheoreticMetadata specA.Metadata) (pickSetTheoreticMetadata specB.Metadata) None)]
             member _.IsClosedUnder _ = SetResult.Default()
             member this.Implies other       = specA.Implies other
             member _.EquivalentTo _  = SetResult.Default() }
@@ -959,13 +959,13 @@ module CivicSetConstructors =
 
         let prov =
                     match provOption with 
-                    | None -> Provenance
+                    | None -> 
                                 { SourceName = symbol; 
                                 Step = 2; 
                                 Timestamp = Some DateTime.UtcNow; 
                                 Note = "original"; 
                                 Lineage = lineage }
-                    | Some p -> Provenance p
+                    | Some p -> p
 
         { new ICivicSet<'T> with
             member _.Symbol = Some symbol
@@ -979,7 +979,7 @@ module CivicSetConstructors =
                                   SetTheoretic { Cardinality  = Some (Finite vals.Length)
                                                  Countability = Some Countable
                                                  OrderType    = order }
-                                  prov ]
+                                  Provenance prov ]
             member _.IsClosedUnder _ = SetResult.Default()
             member this.Implies (other: ICivicSet<'T>) : SetResult<ICivicSet<'T>> =
                 let difference = (Operations.setDifferenceResult 100 this other) :> ICivicResult<_>
@@ -991,11 +991,12 @@ module CivicSetConstructors =
                         SourceName = sprintf "Implication (%s ⇒ %s)"
                                         (defaultArg this.Symbol  "A")
                                         (defaultArg other.Symbol "B")
-                        Step = difference.Provenance.Step
+                        Step = difference.Provenance.Step + 1
                         Note = 
                             match allImply with 
                             | true -> $"Implication confirmed: {this.Symbol.Value} ⊆ {other.Symbol.Value}"
-                            | false -> sprintf "Implication fails: %d counterexample(s) (e.g. %A)" (Seq.toList difference.Value.Value).Length difference.Value.Value}
+                            | false -> sprintf "Implication fails: %d counterexample(s) (e.g. %A)" (Seq.toList difference.Value.Value).Length difference.Value.Value
+                        Lineage = [difference.Provenance]}
 
                 match allImply with
                 | true -> SetResult.Succeed(diffSet,$"All members of {this.Symbol.Value} are contained in {other.Symbol.Value} — implication holds", prov)
@@ -1055,11 +1056,12 @@ module CivicSetConstructors =
                                 SourceName = sprintf "Implication (%s ⇒ %s)"
                                                 (defaultArg this.Symbol  "A")
                                                 (defaultArg other.Symbol "B")
-                                Step = diffResult.Provenance.Step
+                                Step = diffResult.Provenance.Step + 1
                                 Note = 
                                     match allImply with 
                                     | true -> $"Implication confirmed: {this.Symbol.Value} ⊆ {other.Symbol.Value} within bounded depth"
-                                    | false -> sprintf"Implication rejected: counterexamples found (%A)" diffResult.Value.Value}
+                                    | false -> sprintf"Implication rejected: counterexamples found (%A)" diffResult.Value.Value
+                                Lineage = [diffResult.Provenance]}
 
                         // Wrap as a civic set for narration 
                         let counterSet = Operations.SetDifferenceFromTemplatesAndResult this other diffResult "Implication Counter Set"
