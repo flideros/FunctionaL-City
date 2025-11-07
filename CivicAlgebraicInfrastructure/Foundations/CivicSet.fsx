@@ -254,12 +254,12 @@ let complex =
 
 printfn "ℕ contains 5? %b" (naturalNumbers.Contains 5)
 printfn "ℕ contains -3? %b" (naturalNumbers.Contains -3)
-printfn "First 10 ℕ: %A" (naturalNumbers.Elements |> Seq.take 5 |> Seq.toList)
+printfn "First 5 ℕ: %A" (naturalNumbers.Elements |> Seq.take 5 |> Seq.toList)
 printfn "ℕ formula: %A" naturalNumbers.Formula
 
 printfn "ℤ sample: %A" (integers.Elements |> Seq.take 5 |> Seq.toList)
 
-printfn "ℚ sample first 20 rationals (diagonal): %A" (rationals.Elements |> Seq.take 5 |> Seq.toList)
+printfn "ℚ sample first 5 rationals (diagonal): %A" (rationals.Elements |> Seq.take 5 |> Seq.toList)
 
 printfn "ℝ formula: %A" reals.Formula
 printfn "ℝ sample: %A" (reals.Elements |> Seq.take 5 |> Seq.toList)
@@ -566,6 +566,21 @@ printfn "Provenance Note: %s" diffResult2.Provenance.Note
 printfn "Provenance Source: %s" diffResult2.Provenance.SourceName
 
 match diffResult2.Value with
+| Some seqVal ->
+    printfn "Difference Elements (sample): %A" (seqVal |> Seq.truncate 10 |> Seq.toList)
+| None ->
+    printfn "No difference yielded."
+printfn " " 
+
+printfn "Set Difference Test: naturalNumbers \\ setB"
+let diffResult3 = Operations.setDifferenceResult equivalenceDepth naturalNumbers setB :> ICivicResult<int seq>
+
+printfn "Success: %b" diffResult3.Success
+printfn "Message: %A" diffResult3.Message
+printfn "Provenance Note: %s" diffResult3.Provenance.Note
+printfn "Provenance Source: %s" diffResult3.Provenance.SourceName
+
+match diffResult3.Value with
 | Some seqVal ->
     printfn "Difference Elements (sample): %A" (seqVal |> Seq.truncate 10 |> Seq.toList)
 | None ->
