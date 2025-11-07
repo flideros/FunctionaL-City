@@ -543,7 +543,7 @@ module Operations =
         | PossiblyInfinite -> SetResult.Succeed ( difference, resultMessage, prov )
         | SymbolicOrUnsafe -> SetResult.FailWithValue ( difference, resultMessage, prov )
 
-module CivicSetConstructors =
+module Union =
     /// <summary>
     /// Extracts the first Provenance entry from metadata if present.
     /// </summary>
@@ -888,6 +888,8 @@ module CivicSetConstructors =
         | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
         | Heterotypic b-> None
 
+module CivicSetConstructors =
+
     /// <summary>
     /// Provides an empty civic set with no symbol, no elements, and no metadata.
     /// </summary>
@@ -1068,7 +1070,6 @@ module CivicSetConstructors =
                             SetResult.FailWithValue(counterSet,$"Implication fails — {this.Symbol.Value} contains members not in {other.Symbol.Value}", prov)
                     member _.EquivalentTo _  = SetResult.Default() }
                     | None -> None //failwith $"Symbol {symbol} not found in registry."
-
 
     // Public Constructors 
 

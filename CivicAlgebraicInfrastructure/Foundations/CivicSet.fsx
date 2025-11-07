@@ -451,10 +451,10 @@ let setA = CivicSetConstructors.finiteSet  "Nat" [1;2;3;4;5] None (Some naturalN
 let setB = CivicSetConstructors.finiteSet "Odds" [1;3;5;7;9] None (Some naturalNumbersSpec)
 let setC = makeSimpleStringSet "String" ["A";"B";"C"]
 
-let unionSet = CivicSetConstructors.unionLiftedSets "Nat" "Odds" setA setB 
-let civicSet1 = CivicSetConstructors.wrapCivicUnion unionSet 
-let unionSetHetero = CivicSetConstructors.unionLiftedSets "Nat" "String" setA setC
-let civicSet2 = CivicSetConstructors.wrapCivicUnion unionSetHetero 
+let unionSet = Union.unionLiftedSets "Nat" "Odds" setA setB 
+let civicSet1 = Union.wrapCivicUnion unionSet 
+let unionSetHetero = Union.unionLiftedSets "Nat" "String" setA setC
+let civicSet2 = Union.wrapCivicUnion unionSetHetero 
 
 // ---------------------------
 // Inspect results
@@ -479,7 +479,7 @@ let flattened =
         | Nested _ -> Seq.empty)
 
 printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
-let collapsed = CivicSetConstructors.tryCollapseCivicUnionToConcrete true false civicSet1
+let collapsed = Union.tryCollapseCivicUnionToConcrete true false civicSet1
 
 // Collapse to concrete example
 let CollapsedToConcrete =    
@@ -493,6 +493,8 @@ printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
 printfn " "    
+
+// Test Imply and Difference
 
 let implicationResult = naturalNumbers.Implies(integers) :> ICivicResult<_>
 
@@ -584,5 +586,5 @@ match diffResult3.Value with
 | Some seqVal ->
     printfn "Difference Elements (sample): %A" (seqVal |> Seq.truncate 10 |> Seq.toList)
 | None ->
-    printfn "No difference yielded."
+    printfn "No difference yielded." 
 printfn " " 
