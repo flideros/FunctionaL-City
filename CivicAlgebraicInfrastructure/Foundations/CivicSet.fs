@@ -371,7 +371,7 @@ module Operations =
         let cardCountThis  = SetTheoreticMetadata.extractCardinalityAndCountability this.Metadata
         let cardCountOther = SetTheoreticMetadata.extractCardinalityAndCountability other.Metadata
 
-        let sourceName = sprintf "setDifference (%s \ %s%s)"
+        let sourceName = sprintf "(%s \ %s%s)"
                                     (defaultArg this.Symbol  "A")                                    
                                     (defaultArg other.Symbol "B")
                                     (defaultArg this.Symbol  "A")
@@ -384,19 +384,7 @@ module Operations =
             | Some Continuum, Some Uncountable -> PossiblyInfinite
             | Some Continuum, _ -> SymbolicOrUnsafe
             | _, _ -> SymbolicOrUnsafe
-        
-        let prov =                
-            let pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
-                meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
-            let provs  = List.map pickProvenanceFromSetMetadata [this.Metadata;other.Metadata]
-            let operationNote = 
-                match setComputability with
-                | FiniteEnumerable -> "setDifference"
-                | PossiblyInfinite -> "setDifference -- Result may be infinite; inspect laziness and computability."
-                | SymbolicOrUnsafe -> "setDifference -- Result may be symbolic or non-enumerable; civic construction required."
-            let derivedProv = Provenance.mkDerived sourceName operationNote provs
-            derivedProv
-        
+                
         let testSetEquality (a: seq<'T>) (b: seq<'T>) : bool =
             match this.Symbol = other.Symbol with 
             | true -> true
@@ -456,15 +444,87 @@ module Operations =
              SetTheoreticMetadata.infiniteSetDiagnostics cardCountOther]
             |> List.distinct
 
+        let mapDiagnosticsToMessage diagnostic= 
+            match diagnostic with
+            | "Fully finite and enumerable" ->
+                $"Result {sourceName} is finite and safely enumerable",
+                $"setDifference: {sourceName} — result is finite and safely enumerable"
+
+            | "Finite cardinality with uncountable classification: check metadata consistency." ->
+                $"Result {sourceName} has inconsistent metadata: finite cardinality marked uncountable",
+                $"setDifference: {sourceName} — metadata inconsistency detected (finite ∖ uncountable)"
+
+            | "Finite cardinality but missing countability metadata." ->
+                $"Result {sourceName} is finite but missing countability metadata",
+                $"setDifference: {sourceName} — countability metadata missing for finite set"
+
+            | "ℵ₀ detected: result may be non-enumerable." ->
+                $"Result {sourceName} has ℵ₀ cardinality — may be lazily enumerable or infinite",
+                $"setDifference: {sourceName} — ℵ₀ detected; inspect laziness and computability"
+
+            | "ℵ₀ with uncountable classification: check metadata consistency." ->
+                $"Result {sourceName} has ℵ₀ cardinality with uncountable classification — check metadata",
+                $"setDifference: {sourceName} — metadata inconsistency (ℵ₀ ∖ uncountable)"
+
+            | "ℵ₀ detected but missing countability metadata." ->
+                $"Result {sourceName} has ℵ₀ cardinality but lacks countability metadata",
+                $"setDifference: {sourceName} — ℵ₀ detected; countability metadata missing"
+
+            | "Continuum cardinality: result may be uncomputable." ->
+                $"Result {sourceName} has continuum cardinality — may be symbolic or non-enumerable",
+                $"setDifference: {sourceName} — continuum cardinality; symbolic construction may be required"
+
+            | "Continuum with countable classification: check metadata consistency." ->
+                $"Result {sourceName} has continuum cardinality marked countable — check metadata",
+                $"setDifference: {sourceName} — metadata inconsistency (continuum ∖ countable)"
+
+            | "Continuum cardinality but missing countability metadata." ->
+                $"Result {sourceName} has continuum cardinality but lacks countability metadata",
+                $"setDifference: {sourceName} — continuum cardinality; countability metadata missing"
+
+            | msg when msg.StartsWith("Unknown cardinality") ->
+                $"Result {sourceName} has unknown cardinality — manual inspection required",
+                $"setDifference: {sourceName} — {msg}"
+
+            | "Missing cardinality metadata." ->
+                $"Result {sourceName} is missing cardinality metadata",
+                $"setDifference: {sourceName} — cardinality metadata missing"
+
+            | "Missing countability metadata." ->
+                $"Result {sourceName} is missing countability metadata",
+                $"setDifference: {sourceName} — countability metadata missing"
+
+            | _ ->
+                $"Result {sourceName} has unclassified metadata",
+                $"setDifference: {sourceName} — unclassified metadata"
+
+        let resultMessage = 
+            match diagnostics.IsEmpty with 
+            | false -> (String.concat " | " (List.map (fun x -> fst (mapDiagnosticsToMessage x)) diagnostics))
+            | true -> sourceName
+
+        let provNote = 
+            match diagnostics.IsEmpty with 
+            | false -> (String.concat " | " (List.map (fun x -> snd (mapDiagnosticsToMessage x)) diagnostics))
+            | true -> sourceName
+        
+        let prov =                
+            let pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
+                meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
+            let provs  = List.map pickProvenanceFromSetMetadata [this.Metadata;other.Metadata]
+            let operationNote = provNote
+            let derivedProv = Provenance.mkDerived sourceName operationNote provs
+            derivedProv
+
         let message =
             match diagnostics.IsEmpty with 
             | false -> (String.concat " | " diagnostics)
             | true -> sourceName
 
         match setComputability with
-        | FiniteEnumerable -> SetResult.Succeed ( difference, message, prov )
-        | PossiblyInfinite -> SetResult.Succeed ( difference, message, prov )
-        | SymbolicOrUnsafe -> SetResult.FailWithValue ( difference, message, prov )
+        | FiniteEnumerable -> SetResult.Succeed ( difference, resultMessage, prov )
+        | PossiblyInfinite -> SetResult.Succeed ( difference, resultMessage, prov )
+        | SymbolicOrUnsafe -> SetResult.FailWithValue ( difference, resultMessage, prov )
 
 module CivicSetConstructors =
     /// <summary>
@@ -887,13 +947,13 @@ module CivicSetConstructors =
                         Step = difference.Provenance.Step
                         Note = 
                             match allImply with 
-                            | true -> "Implication holds"
-                            | false -> sprintf "Implication fails: %d counterexample(s)" (Seq.toList difference.Value.Value).Length }
+                            | true -> $"Implication confirmed: {this.Symbol.Value} ⊆ {other.Symbol.Value}"
+                            | false -> sprintf "Implication fails: %d counterexample(s) (e.g. %A)" (Seq.toList difference.Value.Value).Length difference.Value.Value}
 
                 match allImply with
-                | true -> SetResult.Succeed(diffSet,"Implication holds", prov)
+                | true -> SetResult.Succeed(diffSet,$"All members of {this.Symbol.Value} are contained in {other.Symbol.Value} — implication holds", prov)
                 | false -> 
-                    SetResult.FailWithValue(diffSet,"Implication fails with counterexamples", prov)
+                    SetResult.FailWithValue(diffSet,sprintf "Implication fails with %d counterexample(s) found" (Seq.toList difference.Value.Value).Length, prov)
             member _.EquivalentTo _ = SetResult.Default() }
 
     let private mkInfiniteSetFromDictionary 
@@ -932,16 +992,16 @@ module CivicSetConstructors =
                                 Step = diffResult.Provenance.Step
                                 Note = 
                                     match allImply with 
-                                    | true -> "Implication holds"
-                                    | false -> sprintf "Implication fails"}
+                                    | true -> $"Implication confirmed: {this.Symbol.Value} ⊆ {other.Symbol.Value} within bounded depth"
+                                    | false -> sprintf"Implication rejected: counterexamples found (%A)" diffResult.Value.Value}
 
                         // Wrap as a civic set for narration 
                         let counterSet = Operations.SetDifferenceFromTemplatesAndResult this other diffResult "Implication Counter Set"
 
                         match allImply with
-                        | true -> SetResult.Succeed(counterSet,"Implication holds", prov)
+                        | true -> SetResult.Succeed(counterSet,$"All members of {this.Symbol.Value} are contained in {other.Symbol.Value} — implication holds", prov)
                         | false -> 
-                            SetResult.FailWithValue(counterSet,"Implication fails with counterexamples", prov)
+                            SetResult.FailWithValue(counterSet,$"Implication fails — {this.Symbol.Value} contains members not in {other.Symbol.Value}", prov)
                     member _.EquivalentTo _  = SetResult.Default() }
                     | None -> None //failwith $"Symbol {symbol} not found in registry."
 

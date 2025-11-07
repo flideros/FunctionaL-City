@@ -493,18 +493,81 @@ printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
 printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
 printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
 printfn " "    
-let result = naturalNumbers.Implies(integers):> ICivicResult<_>
-printfn "%A" result.Success
-printfn "%A" result.Message
-printfn "%A" result.Value.Value.Elements
-//printfn "%A" result.Provenance
-//printfn "%A" result.Value.Value.Metadata
-printfn "%A" result.Provenance.Note
 
-printfn " "
-let diffResult: ICivicResult<int seq> = (Operations.setDifferenceResult equivalenceDepth integers naturalNumbers) :> ICivicResult<_>
-printfn "%A" diffResult.Message
-printfn "%A" diffResult.Success
-printfn "%A" diffResult.Value
-printfn "%A" diffResult.Provenance.Note
-printfn "%A" diffResult.Provenance.SourceName
+let implicationResult = naturalNumbers.Implies(integers) :> ICivicResult<_>
+
+printfn "Implication Test: naturalNumbers ⇒ integers"
+printfn "Success: %b" implicationResult.Success
+printfn "Message: %A" implicationResult.Message
+printfn "Provenance Note: %s" implicationResult.Provenance.Note
+
+match implicationResult.Value with
+| Some civicSet ->
+    printfn "Elements (sample): %A" (civicSet.Elements |> Seq.truncate 10 |> Seq.toList)
+    // Uncomment for deeper inspection:
+    // printfn "Metadata: %A" civicSet.Value.Metadata
+| None ->
+    printfn "No CivicSet yielded."
+printfn " " 
+
+let implicationResult2 = integers.Implies(naturalNumbers) :> ICivicResult<_>
+
+printfn "Implication Test: integers ⇒ naturalNumbers"
+printfn "Success: %b" implicationResult2.Success
+printfn "Message: %A" implicationResult2.Message
+printfn "Provenance Note: %s" implicationResult2.Provenance.Note
+
+match implicationResult2.Value with
+| Some civicSet ->
+    printfn "Elements (sample): %A" (civicSet.Elements |> Seq.truncate 10 |> Seq.toList)
+    // Uncomment for deeper inspection:
+    // printfn "Metadata: %A" civicSet.Value.Metadata
+| None ->
+    printfn "No CivicSet yielded."
+printfn " " 
+
+let implicationResult3 = setA.Implies(setB) :> ICivicResult<_>
+
+printfn "Implication Test: setA ⇒ setB"
+printfn "Success: %b" implicationResult3.Success
+printfn "Message: %A" implicationResult3.Message
+printfn "Provenance Note: %s" implicationResult3.Provenance.Note
+
+match implicationResult3.Value with
+| Some civicSet ->
+    printfn "Elements (sample): %A" (civicSet.Elements |> Seq.truncate 10 |> Seq.toList)
+    // Uncomment for deeper inspection:
+    // printfn "Metadata: %A" civicSet.Value.Metadata
+| None ->
+    printfn "No CivicSet yielded."
+printfn " " 
+
+printfn "Set Difference Test: integers \\ naturalNumbers"
+let diffResult = Operations.setDifferenceResult equivalenceDepth integers naturalNumbers :> ICivicResult<int seq>
+
+printfn "Success: %b" diffResult.Success
+printfn "Message: %A" diffResult.Message
+printfn "Provenance Note: %s" diffResult.Provenance.Note
+printfn "Provenance Source: %s" diffResult.Provenance.SourceName
+
+match diffResult.Value with
+| Some seqVal ->
+    printfn "Difference Elements (sample): %A" (seqVal |> Seq.truncate 10 |> Seq.toList)
+| None ->
+    printfn "No difference yielded."
+printfn " " 
+
+printfn "Set Difference Test: setA \\ naturalNumbers"
+let diffResult2 = Operations.setDifferenceResult equivalenceDepth setA naturalNumbers :> ICivicResult<int seq>
+
+printfn "Success: %b" diffResult2.Success
+printfn "Message: %A" diffResult2.Message
+printfn "Provenance Note: %s" diffResult2.Provenance.Note
+printfn "Provenance Source: %s" diffResult2.Provenance.SourceName
+
+match diffResult2.Value with
+| Some seqVal ->
+    printfn "Difference Elements (sample): %A" (seqVal |> Seq.truncate 10 |> Seq.toList)
+| None ->
+    printfn "No difference yielded."
+printfn " " 
