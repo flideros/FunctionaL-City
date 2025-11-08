@@ -37,10 +37,12 @@ Two constructors now define how sets are built:
                   OrderType = Some TotalOrder}
       Note = "ℕ, the set of natural numbers ≥ 0, originates from Giuseppe Peano's 1889 axioms, ..."
     }
+  
   // Create a dictionary for infinite integer sets. 
   let intRules : CivicSetRuleDictionary<int> = (Map.ofList [("\u2115", naturalNumbersSpec);("\u2124", integersSpec)])
   // Cast defaultSet to a concrete type
-  let defaultS = CivicSetConstructors.defaultSet :> ICivicSet<int>
+  let defaultS = CivicSetConstructors.defaultSet :> ICivicSet<int> 
+  ```
 
 - **Finite Constructor**  
   Builds sets from item lists plus a base ruleset.  
