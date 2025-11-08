@@ -645,6 +645,18 @@ module Union =
         let pb = pickProvenanceFromSetMetadata b.Metadata
         let sharedSource = $"{aName} ∪ {bName}"
 
+        let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
+        let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
+
+        // only compute/attach length when both sides claim finiteness
+        let elementCount =
+            match sa, sb with
+            | None, _ | _ , None -> None
+            | Some a, Some b -> 
+                match a.Cardinality, b.Cardinality with
+                | Some (Finite count1) , Some (Finite count2) -> Some (count1 + count2)
+                | _,_ -> None
+
         // LiftedCell wrappers for both sets (derive provenance step from parents)
         let cellA : LiftedCell<ICivicSet<'A>> =
             { Value = a
@@ -659,7 +671,7 @@ module Union =
         // set theoretic metadata
         let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
         let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
-        let mergedSetTheoreticMetadata = SetTheoreticMetadata.mergeSetTheoreticMetadata sa sb (Some (Seq.length elementsSeq))
+        let mergedSetTheoreticMetadata = SetTheoreticMetadata.mergeSetTheoreticMetadata sa sb (elementCount)
 
         let containsImpl (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool =
             match z with
@@ -752,7 +764,7 @@ module Union =
             | Nested c -> recFlattenLifted<'A,'B> c.Value)
 
     /// <summary>
-    /// Collapse a lifted set-of-sets into a concrete ICivicSet<'T,'S> when both branches contain sets of the same element type 'T.
+    /// Collapse a lifted set-of-sets into a concrete finite ICivicSet<'T,'S> when both branches contain sets of the same element type 'T.
     /// </summary>
     /// <param name="deDuplicate">Whether to distinct elements (default true).</param>
     /// <param name="collapseWhenProvenanceDiffers">When false and provenance differs, returns None so caller decides.</param>
@@ -765,10 +777,12 @@ module Union =
     /// - De-duplication uses comparer if requested; otherwise elements concatenated in original order.
     /// Emits Metadata: Tag "CollapsedFromLiftedUnion" and derived Provenance step "collapse lifted to concrete".
     /// </signage>
+    /// <remarks> TODO: rework this fuction to work with infinite sets. </remarks>
     let private collapseLiftedToConcrete<'T>
+        //(equivalenceDepth:int)
         (deDuplicate: bool)
         (collapseWhenProvenanceDiffers: bool)
-        (liftedSet: HomotypicUnion<'T>)
+        (liftedSet: HomotypicUnion<'T>)         
         : option<ICivicSet<'T>> =
 
         // collect underlying sets (expecting A and B branches)
@@ -795,7 +809,15 @@ module Union =
                     | None -> Provenance.EmitSourceWithLineageTrail p)
                 |> List.distinct
 
-            let canCollapse =
+            let isFinite = 
+                parts
+                |> List.map (fun (x,_) -> pickSetTheoreticMetadataFromSetMetadata x.Metadata)
+                |> List.map (fun x -> match x with | None -> None | Some d -> d.Cardinality)
+                |> List.map (fun x -> match x with | Some (Finite _) -> true | _ -> false)
+                |> List.contains false 
+                |> not
+            
+            let canCollapse =           
                 collapseWhenProvenanceDiffers
                 || List.length distinctSources <= 1
         
@@ -804,9 +826,10 @@ module Union =
                 |> List.map (fun x -> (fst x).Compare)
                 |> List.tryPick id
 
-            match canCollapse, comparer  with 
-            | false, _ | true, None -> None
-            | true, Some c ->
+            match isFinite, canCollapse, comparer  with 
+            
+            | _, false, _ | _, true, None | false,_,_-> None
+            | true, true, Some c ->
                 // 1) collect all elements (one sequence)
                 let collected : seq<'T> =
                     parts
@@ -1109,4 +1132,3 @@ module CivicSetConstructors =
         (ruleOption: CivicSetRule<'T> option)
         : ICivicSet<'T> = mkFiniteSet symbol vals provOption ruleOption
         
-            

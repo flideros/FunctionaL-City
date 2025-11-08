@@ -9,6 +9,7 @@ Welcome to **BlogDistrict**, the public square of FunctionaL City. This district
 
 | Title | Summary |
 |-------|---------|
+| [Constructor Refactor, Infinite Rules, and Why Union Needs a Revisit](Posts/251108_ConstructorRefactorInfiniteRulesAndWhyUnionNeedsARevisit.md) | What happens when your set theory engine starts bumping into infinity? |
 | [CivicSet Ordinance Amendment & Roadmap](Posts/251025_OrdinanceAmendmentFromGenericStoSymbol.md) | Symbols and Overlays in FunctionaL City. |
 | [Constructor Clarity and Civic Lineage](Posts/251021_ConstructorClarityAndCivicLineage.md) | Provenance is not an afterthought — it is foundational. |
 | [Civic Report Leads to Civic Union](Posts/251013_CivicReportLeadsToCivicUnion.md) | How FunctionaL City formalized its first narratable union through symbolic inspection and provenance scaffolding |

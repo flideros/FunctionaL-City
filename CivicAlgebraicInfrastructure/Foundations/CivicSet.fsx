@@ -86,7 +86,7 @@ positive naturals, and their negatives, forming a foundational ring for arithmet
 
 // Create a dictionary for infinite integer sets. This will be a state variable in an a state machine at some point.
 let intRules : CivicSetRuleDictionary<int> = (Map.ofList [("\u2115", naturalNumbersSpec);("otherNaturals", naturalNumbersSpec);("\u2124", integersSpec)])
-
+// Cast defaultSet to a concrete type
 let defaultS = CivicSetConstructors.defaultSet :> ICivicSet<int>
 // Create the ICivicSets from the rule set and symbol.
 let naturalNumbers  = CivicSetConstructors.infiniteSet intRules "\u2115" equivalenceDepth |> Option.defaultValue defaultS 
@@ -517,7 +517,7 @@ let implicationResult2 = integers.Implies(naturalNumbers) :> ICivicResult<_>
 
 printfn "Success: %b" implicationResult2.Success
 printfn "Message: %A" implicationResult2.Message
-printfn "Provenance Note: %A" implicationResult2.Provenance//.Note
+printfn "Provenance Note: %A" implicationResult2.Provenance.Note
 
 match implicationResult2.Value with
 | Some civicSet ->
@@ -533,7 +533,7 @@ let implicationResult3 = setA.Implies(setB) :> ICivicResult<_>
 
 printfn "Success: %b" implicationResult3.Success
 printfn "Message: %A" implicationResult3.Message
-printfn "Provenance Note: %A" implicationResult3.Provenance//.Note
+printfn "Provenance Note: %A" implicationResult3.Provenance.Note
 
 match implicationResult3.Value with
 | Some civicSet ->
