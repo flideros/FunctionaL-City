@@ -183,18 +183,18 @@ type ICivicSet<'Concrete> =
 type CivicUnionKind<'A,'B,'T> =
     
     /// <summary>
-    /// IndexFlatten: Cartesian product with index provenance.
+    /// IndexFlattened: Cartesian product with index provenance.
     /// Role: ℕ × (A × B).
     /// Ordinance: zoning charter with lot numbers, narrates positional lineage.
     /// </summary>
-    | IndexFlatten of ICivicSet<'T * 'T>
+    | IndexFlattened of ICivicSet<'T * 'T>
     
     /// <summary>
     /// SequenceFlatten: Coproduct (disjoint union) with sequence provenance.
     /// Role: LiftedID ⊕ Value.
     /// Ordinance: Narrates district lineage.
     /// </summary>
-    | SequenceFlatten of ICivicSet<Choice<'A,'B>>
+    | SequenceFlattened of ICivicSet<Choice<'A,'B>>
     
     /// <summary>
     /// CrossProduct: Cartesian product across districts.
@@ -204,25 +204,25 @@ type CivicUnionKind<'A,'B,'T> =
     | CrossProduct of ICivicSet<'A * 'B>
     
     /// <summary>
-    /// MultisetCollapseGlobal: Bag with multiplicity overlay, discards district provenance.
+    /// MultisetGlobal: Bag with multiplicity overlay, discards district provenance.
     /// Role: Multiset (frequency only).
     /// Ordinance: Narrates global counts of citizens.
     /// </summary>
-    | MultisetCollapseGlobal of ICivicSet<'T * int>
+    | MultisetGlobal of ICivicSet<'T * int>
     
     /// <summary>
-    /// MultisetCollapseBySet: Bag with multiplicity overlay per district.
+    /// MultisetBySet: Bag with multiplicity overlay per district.
     /// Role: Multiset partitioned by district (Choice<'A,'B> × int).
     /// Ordinance: Narrates frequency charter per district.
     /// </summary>
-    | MultisetCollapseBySet of ICivicSet<Choice<'A,'B> * int>
+    | MultisetBySet of ICivicSet<Choice<'A,'B> * int>
     
     /// <summary>
-    /// UniqueCollapse: Plain set with uniqueness law enforced.
+    /// Unique: Plain set with uniqueness law enforced.
     /// Role: Set.
-    /// Ordinance: Identity ordinance, deduplicates citizens by uniqueness only.
+    /// Ordinance: Identity ordinance, deduplicates citizens by collapsing duplicates into a single representative.
     /// </summary>
-    | UniqueCollapse of ICivicSet<'T>
+    | Unique of ICivicSet<'T>
 
     /// <summary>
     /// LiftedSets: Higher-order union where elements are themselves civic sets.
@@ -231,7 +231,6 @@ type CivicUnionKind<'A,'B,'T> =
     /// Default: collapse returns LiftedUnion unchanged unless a collapse morphism is invoked.
     /// </summary>
     | LiftedSets of ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>
-
 
 /// <summary>
 /// Lifted union of homotypic civic sets (same concrete type).
