@@ -471,12 +471,7 @@ for e in unionSet.Elements do
 
 // Flatten members for demonstration
 let flattened =
-    unionSet.Elements
-    |> Seq.collect (fun lifted ->
-        match lifted with
-        | A c -> c.Value.Elements |> Seq.map Choice1Of2
-        | B c -> c.Value.Elements |> Seq.map Choice2Of2
-        | Nested _ -> Seq.empty)
+    Union.flattenLiftedMembersSeq unionSet
 
 printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
 let collapsed = Union.tryCollapseCivicUnionToConcrete true false civicSet1

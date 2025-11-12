@@ -173,6 +173,67 @@ type ICivicSet<'Concrete> =
     abstract member EquivalentTo : ICivicSet<'Concrete> -> SetResult<bool>
 
 /// <summary>
+/// CivicUnionKind defines the canonical union scenarios in the set-theory engine.
+/// Each case represents a distinct ordinance for flattening or collapsing lifted sets,
+/// with explicit provenance overlays for remixers to audit.
+/// </summary>
+/// <typeparam name="A">Type parameter for left-side district values.</typeparam>
+/// <typeparam name="B">Type parameter for right-side district values.</typeparam>
+/// <typeparam name="T">Type parameter for concrete values.</typeparam>
+type CivicUnionKind<'A,'B,'T> =
+    
+    /// <summary>
+    /// IndexFlatten: Cartesian product with index provenance.
+    /// Role: ℕ × (A × B).
+    /// Ordinance: zoning charter with lot numbers, narrates positional lineage.
+    /// </summary>
+    | IndexFlatten of ICivicSet<'T * 'T>
+    
+    /// <summary>
+    /// SequenceFlatten: Coproduct (disjoint union) with sequence provenance.
+    /// Role: LiftedID ⊕ Value.
+    /// Ordinance: Narrates district lineage.
+    /// </summary>
+    | SequenceFlatten of ICivicSet<Choice<'A,'B>>
+    
+    /// <summary>
+    /// CrossProduct: Cartesian product across districts.
+    /// Role: SeqA × SeqB.
+    /// Ordinance: Narrates pairings across districts.
+    /// </summary>
+    | CrossProduct of ICivicSet<'A * 'B>
+    
+    /// <summary>
+    /// MultisetCollapseGlobal: Bag with multiplicity overlay, discards district provenance.
+    /// Role: Multiset (frequency only).
+    /// Ordinance: Narrates global counts of citizens.
+    /// </summary>
+    | MultisetCollapseGlobal of ICivicSet<'T * int>
+    
+    /// <summary>
+    /// MultisetCollapseBySet: Bag with multiplicity overlay per district.
+    /// Role: Multiset partitioned by district (Choice<'A,'B> × int).
+    /// Ordinance: Narrates frequency charter per district.
+    /// </summary>
+    | MultisetCollapseBySet of ICivicSet<Choice<'A,'B> * int>
+    
+    /// <summary>
+    /// UniqueCollapse: Plain set with uniqueness law enforced.
+    /// Role: Set.
+    /// Ordinance: Identity ordinance, deduplicates citizens by uniqueness only.
+    /// </summary>
+    | UniqueCollapse of ICivicSet<'T>
+
+    /// <summary>
+    /// LiftedSets: Higher-order union where elements are themselves civic sets.
+    /// Role: Set-of-sets (power-set-like).
+    /// Ordinance: Meta-district charter, narrates unions as citizens.
+    /// Default: collapse returns LiftedUnion unchanged unless a collapse morphism is invoked.
+    /// </summary>
+    | LiftedSets of ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>
+
+
+/// <summary>
 /// Lifted union of homotypic civic sets (same concrete type).
 /// </summary>
 type HomotypicUnion<'A> = ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'A>>>
@@ -753,7 +814,7 @@ module Union =
     /// <param name="liftedSet">Lifted set instance.</param>
     /// <returns>Flattened sequence of members with branch tags.</returns>
     /// <signage>Used by collapse operations and for readable signage of nested unions.</signage>
-    let flattenLiftedMembers<'A,'B>
+    let flattenLiftedMembersSeq<'A,'B>
         (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
         : seq<Choice<'A,'B>> =
         liftedSet.Elements
