@@ -173,6 +173,23 @@ type ICivicSet<'Concrete> =
     abstract member EquivalentTo : ICivicSet<'Concrete> -> SetResult<bool>
 
 /// <summary>
+/// Lifted union of homotypic civic sets (same concrete type).
+/// </summary>
+type HomotypicUnion<'A> = ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'A>>>
+
+/// <summary>
+/// Lifted union of heterotypic civic sets (different concrete types).
+/// </summary>
+type HeterotypicUnion<'A,'B> = ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>
+
+/// <summary>
+/// Tagged union wrapper used to represent lifted unions in the civic model.
+/// </summary>
+type CivicUnion<'A,'B> = 
+    | Homotypic of HomotypicUnion<'A>
+    | Heterotypic of HeterotypicUnion<'A,'B>
+
+/// <summary>
 /// CivicUnionKind defines the canonical union scenarios in the set-theory engine.
 /// Each case represents a distinct ordinance for flattening or collapsing lifted sets,
 /// with explicit provenance overlays for remixers to audit.
@@ -227,27 +244,10 @@ type CivicUnionKind<'A,'B,'T> =
     /// <summary>
     /// LiftedSets: Higher-order union where elements are themselves civic sets.
     /// Role: Set-of-sets (power-set-like).
-    /// Ordinance: Meta-district charter, narrates unions as citizens.
-    /// Default: collapse returns LiftedUnion unchanged unless a collapse morphism is invoked.
+    /// Ordinance: Meta-district charter, narrates unions (homotypic or heterotypic) as citizens.
+    /// Default: collapse returns LiftedSets unchanged unless a collapse morphism is invoked.
     /// </summary>
-    | LiftedSets of ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>
-
-/// <summary>
-/// Lifted union of homotypic civic sets (same concrete type).
-/// </summary>
-type HomotypicUnion<'A> = ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'A>>>
-
-/// <summary>
-/// Lifted union of heterotypic civic sets (different concrete types).
-/// </summary>
-type HeterotypicUnion<'A,'B> = ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>
-
-/// <summary>
-/// Tagged union wrapper used to represent lifted unions in the civic model.
-/// </summary>
-type CivicUnion<'A,'B> = 
-    | Homotypic of HomotypicUnion<'A>
-    | Heterotypic of HeterotypicUnion<'A,'B>
+    | LiftedSets of CivicUnion<'A,'B>
 
 module SetTheoreticMetadata =
     /// Canonical empty instance
