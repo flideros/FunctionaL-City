@@ -197,14 +197,14 @@ type CivicUnion<'A,'B> =
 /// <typeparam name="A">Type parameter for left-side district values.</typeparam>
 /// <typeparam name="B">Type parameter for right-side district values.</typeparam>
 /// <typeparam name="T">Type parameter for concrete values.</typeparam>
-type CivicUnionKind<'A,'B,'T> =
+type CivicUnionKind<'A,'B> =
      
     /// <summary>
     /// IndexFlattened: Cartesian product with index provenance.
     /// Role: ℕ × (A × B).
     /// Ordinance: zoning charter with lot numbers, narrates positional lineage.
     /// </summary>
-    | IndexFlattened of ICivicSet<'T * 'T>
+    | IndexFlattened of ICivicSet<'A * 'A>
     
     /// <summary>
     /// SequenceFlatten: Coproduct (disjoint union) with sequence provenance.
@@ -225,7 +225,7 @@ type CivicUnionKind<'A,'B,'T> =
     /// Role: Multiset (frequency only).
     /// Ordinance: Narrates global counts of citizens.
     /// </summary>
-    | MultisetGlobal of ICivicSet<'T * int>
+    | MultisetGlobal of ICivicSet<'A * int>
     
     /// <summary>
     /// MultisetBySet: Bag with multiplicity overlay per district.
@@ -239,7 +239,7 @@ type CivicUnionKind<'A,'B,'T> =
     /// Role: Set.
     /// Ordinance: Identity ordinance, deduplicates citizens by collapsing duplicates into a single representative.
     /// </summary>
-    | Unique of ICivicSet<'T>
+    | Unique of ICivicSet<'A>
 
     /// <summary>
     /// LiftedSets: Higher-order union where elements are themselves civic sets.
@@ -916,9 +916,7 @@ module Union =
         match liftedSet with
         | :? HomotypicUnion<'A> as a -> Homotypic a
         | _ -> Heterotypic liftedSet
-        
-        
-    
+                
     let tryIndexFlattened = function
         | IndexFlattened set -> Some set
         | _ -> None
@@ -943,15 +941,18 @@ module Union =
         | Unique set -> Some set
         | _ -> None
 
-    let tryHomotypicLifted = function
+    let tryLiftedSets = function
+        | LiftedSets u -> Some u
+        | _ -> None
+     
+    let tryHomotypic = function
         | Homotypic u -> Some u
         | _ -> None
 
-    let tryHeterotypicLifted = function
+    let tryHeterotypic = function
         | Heterotypic u -> Some u
         | _ -> None
  
-
     /// <summary>
     /// Constructs a lifted set-of-sets ICivicSet whose Elements are two Lifted cells wrapping operand sets.
     /// </summary>

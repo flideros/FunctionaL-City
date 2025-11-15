@@ -494,7 +494,7 @@ printfn "Implication Test: setA ⇒ setB"
 let implicationResult3 = setA.Implies(setB) :> ICivicResult<_>
 
 printfn "Success: %b" implicationResult3.Success
-printfn "Message: %A" implicationResult3.Message
+printfn "Message: %A" implicationResult3.Message.Value
 printfn "Provenance Note: %A" implicationResult3.Provenance.Note
 
 match implicationResult3.Value with
@@ -510,7 +510,7 @@ printfn "Set Difference Test: integers \\ naturalNumbers"
 let diffResult = Operations.setDifferenceResult equivalenceDepth integers naturalNumbers :> ICivicResult<int seq>
 
 printfn "Success: %b" diffResult.Success
-printfn "Message: %A" diffResult.Message
+printfn "Message: %A" diffResult.Message.Value
 printfn "Provenance Note: %s" diffResult.Provenance.Note
 printfn "Provenance Source: %s" diffResult.Provenance.SourceName
 
@@ -525,7 +525,7 @@ printfn "Set Difference Test: setA \\ naturalNumbers"
 let diffResult2 = Operations.setDifferenceResult equivalenceDepth setA naturalNumbers :> ICivicResult<int seq>
 
 printfn "Success: %b" diffResult2.Success
-printfn "Message: %A" diffResult2.Message
+printfn "Message: %A" diffResult2.Message.Value
 printfn "Provenance Note: %s" diffResult2.Provenance.Note
 printfn "Provenance Source: %A" diffResult2.Provenance.SourceName
 
@@ -540,7 +540,7 @@ printfn "Set Difference Test: naturalNumbers \\ setB"
 let diffResult3 = Operations.setDifferenceResult equivalenceDepth naturalNumbers setB :> ICivicResult<int seq>
 
 printfn "Success: %b" diffResult3.Success
-printfn "Message: %A" diffResult3.Message
+printfn "Message: %A" diffResult3.Message.Value
 printfn "Provenance Note: %s" diffResult3.Provenance.Note
 printfn "Provenance Source: %A" diffResult3.Provenance.SourceName
 
@@ -554,8 +554,8 @@ printfn " "
 // ---------------------------
 // Inspect results
 // ---------------------------
-let uSet = (Union.tryHomotypicLifted unionSet).Value
-printfn "Union symbol: %A" uSet//.Symbol
+let uSet = (Union.tryHomotypic unionSet).Value
+printfn "Union symbol: %A" uSet.Symbol
 printfn "Union metadata:"
 uSet.Metadata |> Seq.iter (function Tag t -> printfn " Tag: %s" t | Provenance p -> printfn " Prov: %s step=%d" p.SourceName p.Step | _ -> ())
 printfn "Union elements (lifted sets):"
