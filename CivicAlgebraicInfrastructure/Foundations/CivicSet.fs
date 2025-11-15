@@ -192,17 +192,27 @@ type CivicUnion<'A,'B> =
 /// <summary>
 /// CivicUnionKind defines the canonical union scenarios in the set-theory engine.
 /// Each case represents a distinct ordinance for flattening or collapsing lifted sets,
-/// with explicit provenance overlays for remixers to audit.
+/// with explicit provenance overlays for remixers to audit. 
+/// The LiftedSets case is a CivicUnion and serves as the default for all unions,
+/// which may be Homotypic or Heterotypic.
 /// </summary>
 /// <typeparam name="A">Type parameter for left-side district values.</typeparam>
 /// <typeparam name="B">Type parameter for right-side district values.</typeparam>
-/// <typeparam name="T">Type parameter for concrete values.</typeparam>
+/// <remarks>
+/// All cases are CivicUnionKinds. LiftedSets is the default union representation.
+/// IndexFlattened applies to homotypic unions; CrossProduct applies to heterotypic unions.
+/// Other cases narrate coproducts, multiplicity overlays, or uniqueness laws.
+/// Downstream handling treats all cases uniformly, with provenance overlays
+/// distinguishing the chosen alternative.
+/// </remarks>
 type CivicUnionKind<'A,'B> =
      
     /// <summary>
     /// IndexFlattened: Cartesian product with index provenance.
-    /// Role: ℕ × (A × B).
-    /// Ordinance: zoning charter with lot numbers, narrates positional lineage.
+    /// Role: ℕ × (A × A).
+    /// Ordinance: Homotypic Cartesian product with positional lineage.
+    /// Note: This ordinance applies only to homotypic unions (same district type).
+    ///       Refer to <see cref="CrossProduct"/> for a heterotypic Cartesian product alternative.
     /// </summary>
     | IndexFlattened of ICivicSet<'A * 'A>
     
@@ -216,21 +226,27 @@ type CivicUnionKind<'A,'B> =
     /// <summary>
     /// CrossProduct: Cartesian product across districts.
     /// Role: SeqA × SeqB.
-    /// Ordinance: Narrates pairings across districts.
+    /// Ordinance: narrates pairings across distinct districts.
+    /// Note: This ordinance handles heterotypic unions (different district types).
+    ///       Refer to <see cref="IndexFlattened"/> for a homotypic Cartesian product alternative.
     /// </summary>
     | CrossProduct of ICivicSet<'A * 'B>
     
     /// <summary>
     /// MultisetGlobal: Bag with multiplicity overlay, discards district provenance.
-    /// Role: Multiset (frequency only).
-    /// Ordinance: Narrates global counts of citizens.
+    /// Role: Multiset (depth only).
+    /// Ordinance: Narrates global nesting of citizens.
+    /// Note: The integer represents nesting depth, not raw multiplicity.
+    ///       Multiplicity should be derived via an inspectible morphism.
     /// </summary>
     | MultisetGlobal of ICivicSet<'A * int>
     
     /// <summary>
     /// MultisetBySet: Bag with multiplicity overlay per district.
     /// Role: Multiset partitioned by district (Choice<'A,'B> × int).
-    /// Ordinance: Narrates frequency charter per district.
+    /// Ordinance: Narrates nesting charter per district.
+    /// Note: The integer represents nesting depth, not raw multiplicity.
+    ///       Multiplicity should be derived via an inspectible morphism.
     /// </summary>
     | MultisetBySet of ICivicSet<Choice<'A,'B> * int>
     
