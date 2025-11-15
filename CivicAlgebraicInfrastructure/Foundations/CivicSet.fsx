@@ -1,6 +1,6 @@
 #load "Primitives.fs"
 #load "FirstOrderLogic.fs"
-#load "CivicSet.fs" 
+#load "CivicSet.fs"
 
 open System
 open CivicAlgebraicInfrastructure.Foundations.Primitives
@@ -451,43 +451,10 @@ let setA = CivicSetConstructors.finiteSet  "Nat" [1;2;3;4;5] None (Some naturalN
 let setB = CivicSetConstructors.finiteSet "Odds" [1;3;5;7;9] None (Some naturalNumbersSpec)
 let setC = makeSimpleStringSet "String" ["A";"B";"C"]
 
-let unionSet = Union.unionLiftedSets "Nat" "Odds" setA setB 
-let civicSet1 = Union.wrapCivicUnion unionSet 
-let unionSetHetero = Union.unionLiftedSets "Nat" "String" setA setC
-let civicSet2 = Union.wrapCivicUnion unionSetHetero 
-
-// ---------------------------
-// Inspect results
-// ---------------------------
-printfn "Union symbol: %A" unionSet.Symbol
-printfn "Union metadata:"
-unionSet.Metadata |> Seq.iter (function Tag t -> printfn " Tag: %s" t | Provenance p -> printfn " Prov: %s step=%d" p.SourceName p.Step | _ -> ())
-printfn "Union elements (lifted sets):"
-for e in unionSet.Elements do
-    match e with
-    | A cell -> printfn " A -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance.Value.SourceName
-    | B cell -> printfn " B -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance.Value.SourceName
-    | Nested cell -> printfn " Nested -> %A" cell
-
-// Flatten members for demonstration
-let flattened =
-    Union.flattenLiftedMembersSeq unionSet
-
-printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
-let collapsed = Union.tryCollapseCivicUnionToConcrete true false civicSet1
-
-// Collapse to concrete example
-let CollapsedToConcrete =    
-    match collapsed with
-    | Some x -> x.Elements 
-    | None -> []
-
-printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
-// printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
-
-printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
-printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
-printfn " "    
+let unionSet = Union.mkLiftedSets  setA setB 
+let civicSet1 = unionSet  
+let unionSetHetero = Union.mkLiftedSets setA setC
+let civicSet2 = unionSetHetero
 
 // Test Imply and Difference
 
@@ -583,3 +550,38 @@ match diffResult3.Value with
 | None ->
     printfn "No difference yielded." 
 printfn " " 
+
+// ---------------------------
+// Inspect results
+// ---------------------------
+let uSet = (Union.tryHomotypicLifted unionSet).Value
+printfn "Union symbol: %A" uSet//.Symbol
+printfn "Union metadata:"
+uSet.Metadata |> Seq.iter (function Tag t -> printfn " Tag: %s" t | Provenance p -> printfn " Prov: %s step=%d" p.SourceName p.Step | _ -> ())
+printfn "Union elements (lifted sets):"
+for e in uSet.Elements do
+    match e with
+    | A cell -> printfn " A -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance.Value.SourceName
+    | B cell -> printfn " B -> set %A with prov %A" (cell.Value.Symbol) cell.Provenance.Value.SourceName
+    | Nested cell -> printfn " Nested -> %A" cell
+
+// Flatten members for demonstration
+let flattened =
+    Union.flattenLiftedMembersSeq uSet
+
+printfn "Flattened members (Choice): %A" (flattened |> Seq.toList)
+let collapsed = Union.tryCollapseCivicUnionToConcrete true false civicSet1
+
+// Collapse to concrete example
+let CollapsedToConcrete =    
+    match collapsed with
+    | Some x -> x.Elements
+    | None -> []
+
+printfn "Collapsed to Concrete: %A" (CollapsedToConcrete |> Seq.toList)
+// printfn "Collapsed to Concrete Provenance: %A" ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None))
+
+printfn "Collapsed to Concrete Report:%s" (civicSetInspectorReport collapsed)
+printfn "%s" (Provenance.EmitSourceWithLineageTrail ((collapsed.Value).Metadata |> List.tryPick (function Provenance p -> Some p | _ -> None)).Value)
+printfn " "    
+

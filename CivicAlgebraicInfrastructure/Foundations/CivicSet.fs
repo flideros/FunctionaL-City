@@ -198,7 +198,7 @@ type CivicUnion<'A,'B> =
 /// <typeparam name="B">Type parameter for right-side district values.</typeparam>
 /// <typeparam name="T">Type parameter for concrete values.</typeparam>
 type CivicUnionKind<'A,'B,'T> =
-    
+     
     /// <summary>
     /// IndexFlattened: Cartesian product with index provenance.
     /// Role: ℕ × (A × B).
@@ -603,374 +603,6 @@ module Operations =
         | PossiblyInfinite -> SetResult.Succeed ( difference, resultMessage, prov )
         | SymbolicOrUnsafe -> SetResult.FailWithValue ( difference, resultMessage, prov )
 
-module Union =
-    /// <summary>
-    /// Extracts the first Provenance entry from metadata if present.
-    /// </summary>
-    /// <returns>Some provenance or None.</returns>
-    /// <signage>Used by constructors to inherit and synthesize derived provenance.</signage>
-    let private pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
-        meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
-
-    /// <summary>
-    /// Extracts the first SetTheoretic metadata entry from metadata if present.
-    /// </summary>
-    /// <returns>Some set-theoretic metadata or None.</returns>
-    /// <signage>Used during merges to preserve cardinality and ordering overlays.</signage>
-    let private pickSetTheoreticMetadataFromSetMetadata (meta: CivicSetMetadataItem list) : SetTheoreticMetadata option =
-        meta |> List.tryPick (function SetTheoretic st -> Some st | _ -> None)  
-
-    /// <summary>
-    /// Try to obtain the minimal element from a sequence using an optional comparer.
-    /// </summary>
-    /// <returns>Option minimal element or None when no comparer is available.</returns>
-    /// <signage>Utility used by collapse operations to populate Min signage.</signage>
-    let private tryMinByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
-        match compareOpt with
-        | Some cmp -> items |> Seq.sortWith cmp |> Seq.tryHead
-        | None -> None
-
-    /// <summary>
-    /// Try to obtain the maximal element from a sequence using an optional comparer.
-    /// </summary>
-    /// <returns>Option maximal element or None when no comparer is available.</returns>
-    /// <signage>Utility used by collapse operations to populate Max signage.</signage>
-    let private tryMaxByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
-        match compareOpt with
-        | Some cmp -> items |> Seq.sortWith (fun x y -> cmp y x) |> Seq.tryHead
-        | None -> None
-
-    /// <summary>
-    /// Synthesize a canonical symbolic union formula from two symbol constants.
-    /// </summary>
-    /// <remarks>
-    /// Produces a quantified formula ∀x. x ∈ A ∨ x ∈ B when symbols are available; used when
-    /// two sets carry only symbol names rather than full formulas.
-    /// </remarks>
-    /// <signage>Emits a compact symbolic union overlay for signage when formulas absent.</signage>
-    let private canonicalUnionFromSymbols (aSym: Symbol) (bSym: Symbol) : Formula<Symbol> =
-        let x = { Name = "x"; Kind = VariableKind; Arity = None }
-        let inA = Formulae.memberOf (Var x) (Constant aSym)
-        let inB = Formulae.memberOf (Var x) (Constant bSym)
-        Quantified { Bound = ForAll x; Body = Formulae.unionFormula inA inB }
-
-    /// <summary>
-    /// Build a synthesized symbolic union using available formulas or symbols from two civic sets.
-    /// </summary>
-    /// <returns>Optional synthesized Formula<Symbol> representing the union.</returns>
-    /// <signage>
-    /// Priority:
-    /// 1. If both sets have symbol-level formulas, union them.
-    /// 2. If both have symbol names, build canonical quantified union from symbols.
-    /// 3. If one side has a formula and the other a symbol, synthesize by combining membership and the formula.
-    /// </signage>
-    let private synthesizeSymbolicUnion (a: ICivicSet<_>) (b: ICivicSet<_>) : Formula<Symbol> option =
-        let fA = a.Formula
-        let fB = b.Formula
-        let sA = a.Symbol |> Option.map (fun n -> { Name = n; Kind = ConstantKind; Arity = None })
-        let sB = b.Symbol |> Option.map (fun n -> { Name = n; Kind = ConstantKind; Arity = None })
-        match fA, fB, sA, sB with
-        | Some fa, Some fb, _, _ -> Some (Formulae.unionFormula fa fb)
-        | None, None, Some sa, Some sb -> Some (canonicalUnionFromSymbols sa sb)
-        | Some fa, None, _, Some sb ->
-            let x = { Name = "x"; Kind = VariableKind; Arity = None }
-            Some (Formulae.unionFormula fa (Formulae.memberOf (Var x) (Constant sb)))
-        | None, Some fb, Some sa, _ ->
-            let x = { Name = "x"; Kind = VariableKind; Arity = None }
-            Some (Formulae.unionFormula (Formulae.memberOf (Var x) (Constant sa)) fb)
-        | _ -> None
-
-    /// <summary>
-    /// Constructs a lifted set-of-sets ICivicSet whose Elements are two Lifted cells wrapping operand sets.
-    /// </summary>
-    /// <param name="aName">Symbolic name for the first operand set, used in provenance and signage synthesis.</param>
-    /// <param name="bName">Symbolic name for the second operand set, used in provenance and signage synthesis.</param>
-    /// <param name="a">First civic set to be lifted and unioned.</param>
-    /// <param name="b">Second civic set to be lifted and unioned.</param>
-    /// <returns>
-    /// A lifted civic set containing wrappers for both input sets, with derived provenance and optional symbolic formula.
-    /// </returns>
-    /// <signage>
-    /// - Tag: LiftedUnion
-    /// - Provenance: derived from parents, step "union/lifted"
-    /// - Metadata: merged SetTheoretic metadata computed from children
-    /// </signage>
-    let unionLiftedSets<'A,'B>
-        (aName: string) (bName: string)
-        (a: ICivicSet<'A>) (b: ICivicSet<'B>)
-        : ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>> =
-
-        // parent provenance
-        let pa = pickProvenanceFromSetMetadata a.Metadata
-        let pb = pickProvenanceFromSetMetadata b.Metadata
-        let sharedSource = $"{aName} ∪ {bName}"
-
-        let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
-        let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
-
-        // only compute/attach length when both sides claim finiteness
-        let elementCount =
-            match sa, sb with
-            | None, _ | _ , None -> None
-            | Some a, Some b -> 
-                match a.Cardinality, b.Cardinality with
-                | Some (Finite count1) , Some (Finite count2) -> Some (count1 + count2)
-                | _,_ -> None
-
-        // LiftedCell wrappers for both sets (derive provenance step from parents)
-        let cellA : LiftedCell<ICivicSet<'A>> =
-            { Value = a
-              Provenance = Some (Provenance.mkDerived "union(A-wrapper)" "union/lifted" [ pa ]) }
-
-        let cellB : LiftedCell<ICivicSet<'B>> =
-            { Value = b
-              Provenance = Some (Provenance.mkDerived $"union (B-wrapper)" "union/lifted" [ pb ]) }
-
-        let elementsSeq : seq<Lifted<ICivicSet<'A>, ICivicSet<'B>>> = seq { yield A cellA; yield B cellB }
-
-        // set theoretic metadata
-        let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
-        let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
-        let mergedSetTheoreticMetadata = SetTheoreticMetadata.mergeSetTheoreticMetadata sa sb (elementCount)
-
-        let containsImpl (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool =
-            match z with
-            | A c -> Object.ReferenceEquals(c.Value, a) || (c.Value.Symbol = a.Symbol)
-            | B c -> Object.ReferenceEquals(c.Value, b) || (c.Value.Symbol = b.Symbol)
-            | Nested _ -> false
-
-        // synthesize top-level formula if possible
-        let formulaSymbolicOpt = synthesizeSymbolicUnion a b
-        let formulaOpt =
-            match formulaSymbolicOpt with
-            | Some fs -> Some (box fs :?> Formula<Symbol>)
-            | _ -> None
-
-        let unionSymbol =
-            match a.Symbol, b.Symbol with
-            | Some sa, Some sb -> Some $"{sa} ∪ {sb}"
-            | _ -> None
-
-        let unionProv = Provenance.mkDerived (unionSymbol |> Option.defaultValue sharedSource) "union/lifted" [ pa; pb ]
-
-
-
-        { new ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>> with
-            member _.Symbol : string option = unionSymbol
-            member _.Formula : Formula<Symbol> option = formulaOpt
-            member _.Contains (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool = containsImpl z
-            member _.Elements : seq<Lifted<ICivicSet<'A>, ICivicSet<'B>>> = elementsSeq
-            member _.Compare = None
-            member _.Min = None
-            member _.Max = None
-            member _.Metadata : CivicSetMetadataItem list = [ Tag "LiftedUnion" ] @ [SetTheoretic mergedSetTheoreticMetadata] @ [ Provenance unionProv ]
-            member _.IsClosedUnder _ = SetResult.Default()
-            member _.Implies _ = SetResult.Default()
-            member _.EquivalentTo _ = SetResult.Default() }        
-
-    /// <summary>
-    /// Wraps a lifted union into the CivicUnion tagged representation,
-    /// distinguishing homotypic from heterotypic unions.
-    /// </summary>
-    /// <typeparam name="A">Element type of the first set.</typeparam>
-    /// <typeparam name="B">Element type of the second set.</typeparam>
-    /// <param name="liftedSet">Lifted union set to wrap.</param>
-    /// <returns>CivicUnion discriminated union value.</returns>
-    let wrapCivicUnion<'A,'B>
-        (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
-        : CivicUnion<'A,'B> =
-
-        match liftedSet with
-        | :? HomotypicUnion<'A> as a -> Homotypic a
-        | _ -> Heterotypic liftedSet
-
-    /// <summary>
-    /// Recursively collect Choice<'A,'B> elements from a nested Lifted payload where the Lifted
-    /// payloads are whole ICivicSet instances. When encountering A or B, enumerate that set's Elements.
-    /// </summary>
-    /// <returns>Sequence of Choice representing flattened members.</returns>
-    /// <signage>Handles arbitrarily nested Nested branches so flattening signage can be emitted consistently.</signage>
-    let rec private recFlattenLifted<'A,'B>
-        (lifted: Lifted<ICivicSet<'A>, ICivicSet<'B>>)
-        : seq<Choice<'A,'B>> =
-        seq {
-            match lifted with
-            | A cell ->
-                for e in cell.Value.Elements do
-                    yield Choice1Of2 e
-            | B cell ->
-                for e in cell.Value.Elements do
-                    yield Choice2Of2 e
-            | Nested cell ->
-                // cell.Value is another Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>
-                for inner in recFlattenLifted<'A,'B> cell.Value do
-                    yield inner
-        }
-
-    /// <summary>
-    /// Flatten the lifted set-of-sets into a sequence of Choice<'A,'B>.
-    /// </summary>
-    /// <param name="liftedSet">Lifted set instance.</param>
-    /// <returns>Flattened sequence of members with branch tags.</returns>
-    /// <signage>Used by collapse operations and for readable signage of nested unions.</signage>
-    let flattenLiftedMembersSeq<'A,'B>
-        (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
-        : seq<Choice<'A,'B>> =
-        liftedSet.Elements
-        |> Seq.collect (fun top ->
-            match top with
-            | A c -> c.Value.Elements |> Seq.map Choice1Of2
-            | B c -> c.Value.Elements |> Seq.map Choice2Of2
-            | Nested c -> recFlattenLifted<'A,'B> c.Value)
-
-    /// <summary>
-    /// Collapse a lifted set-of-sets into a concrete finite ICivicSet<'T,'S> when both branches contain sets of the same element type 'T.
-    /// </summary>
-    /// <param name="deDuplicate">Whether to distinct elements (default true).</param>
-    /// <param name="collapseWhenProvenanceDiffers">When false and provenance differs, returns None so caller decides.</param>
-    /// <param name="liftedSet">Lifted set-of-sets instance.</param>
-    /// <returns>Some concrete ICivicSet when collapse permitted, otherwise None.</returns>
-    /// <signage>
-    /// Collapse policy:
-    /// - If provenance differs and collapseWhenProvenanceDiffers is false, refuse collapse to preserve lineage.
-    /// - If comparer absent, collapse is refused to prevent accidental reordering semantics.
-    /// - De-duplication uses comparer if requested; otherwise elements concatenated in original order.
-    /// Emits Metadata: Tag "CollapsedFromLiftedUnion" and derived Provenance step "collapse lifted to concrete".
-    /// </signage>
-    /// <remarks> TODO: rework this fuction to work with infinite sets. </remarks>
-    let private collapseLiftedToConcrete<'T>
-        //(equivalenceDepth:int)
-        (deDuplicate: bool)
-        (collapseWhenProvenanceDiffers: bool)
-        (liftedSet: HomotypicUnion<'T>)         
-        : option<ICivicSet<'T>> =
-
-        // collect underlying sets (expecting A and B branches)
-        let parts =            
-            liftedSet.Elements
-            |> Seq.choose (function
-                | A c -> Some (c.Value, c.Provenance)
-                | B c -> Some (c.Value, c.Provenance)
-                | Nested _ -> None)
-            |> Seq.toList
-
-        match parts.IsEmpty with
-        | true-> None
-        | false ->
-            let provs =
-                parts
-                |> List.choose snd
-
-            let distinctSources =
-                provs
-                |> List.map (fun p -> 
-                    match Provenance.GetStepOneProvenance p with
-                    | Some p1 -> Provenance.EmitSourceWithLineageTrail p1
-                    | None -> Provenance.EmitSourceWithLineageTrail p)
-                |> List.distinct
-
-            let isFinite = 
-                parts
-                |> List.map (fun (x,_) -> pickSetTheoreticMetadataFromSetMetadata x.Metadata)
-                |> List.map (fun x -> match x with | None -> None | Some d -> d.Cardinality)
-                |> List.map (fun x -> match x with | Some (Finite _) -> true | _ -> false)
-                |> List.contains false 
-                |> not
-            
-            let canCollapse =           
-                collapseWhenProvenanceDiffers
-                || List.length distinctSources <= 1
-        
-            let comparer =
-                parts
-                |> List.map (fun x -> (fst x).Compare)
-                |> List.tryPick id
-
-            match isFinite, canCollapse, comparer  with 
-            
-            | _, false, _ | _, true, None | false,_,_-> None
-            | true, true, Some c ->
-                // 1) collect all elements (one sequence)
-                let collected : seq<'T> =
-                    parts
-                    |> Seq.collect (fun (set, _) -> set.Elements)
-
-                let distinctByCompare (compareFn: 'T -> 'T -> int) (items: seq<'T>) =
-                    items
-                    |> Seq.sortWith compareFn
-                    |> Seq.fold (fun (acc, lastOpt) item ->
-                        match lastOpt with
-                        | Some last when compareFn last item = 0 -> (acc, lastOpt)
-                        | _ -> (item :: acc, Some item)
-                    ) ([], None)
-                    |> fst
-                    |> List.rev
-
-                // 2) apply deDuplicate or identity (both are seq<'T> -> seq<'T>)
-                let deDuplicated : seq<'T> =
-                    match deDuplicate, comparer with
-                    | true, Some c -> distinctByCompare c collected 
-                    | _, _ -> collected
-                
-                let setTheoreticMetadata = 
-                    let stData = pickSetTheoreticMetadataFromSetMetadata liftedSet.Metadata
-                    match stData with
-                    | Some d -> { d with Cardinality  = Some (Seq.length deDuplicated |> Finite) }
-                    | None -> SetTheoreticMetadata.empty
-
-                let min = 
-                    match deDuplicate, comparer with
-                    | true, Some c -> 
-                        distinctByCompare c collected 
-                        |> tryMinByCompare comparer
-                    | _, _ -> None         
-                
-                let max = 
-                    match deDuplicate, comparer with
-                    | true, Some c -> 
-                        distinctByCompare c collected 
-                        |> tryMaxByCompare comparer
-                    | _, _ -> None
-
-                let formulaOpt: Formula<Symbol> option = liftedSet.Formula
-
-                let parentProvs = parts |> List.map snd
-                let sharedSource = match liftedSet.Symbol with Some s -> s | None -> "collapsed-lifted"
-                let derived = Provenance.mkDerived sharedSource "collapse lifted to concrete"parentProvs
-
-                let symbol = liftedSet.Symbol
-
-                let concrete : ICivicSet<'T> =
-                    //let rec mk =
-                    
-                    { new ICivicSet<'T> with
-                        member _.Symbol = symbol
-                        member _.Formula = formulaOpt
-                        member _.Contains (x:'T) = parts |> Seq.exists (fun (set,_) -> set.Contains x)
-                        member _.Elements = deDuplicated
-                        member _.Compare = comparer
-                        member _.Min = min
-                        member _.Max = max
-                        member _.Metadata = [ Tag "CollapsedFromLiftedUnion" ] @ [ SetTheoretic setTheoreticMetadata ] @ [ Provenance derived ]
-                        member _.IsClosedUnder _ = SetResult.Default()
-                        member _.Implies _ = SetResult.Default()
-                        member _.EquivalentTo _ = SetResult.Default() }
-
-                Some concrete        
-        
-    /// <summary>
-    /// Attempts to collapse any CivicUnion into a concrete civic set when the concrete types align; returns None when types are incompatible.
-    /// </summary>
-    let tryCollapseCivicUnionToConcrete<'A,'B>
-        (deDuplicate: bool)
-        (collapseWhenProvenanceDiffers: bool)
-        (liftedSet: CivicUnion<'A,'B>)
-        : option<ICivicSet<'A>> =
-
-        match liftedSet with
-        | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
-        | Heterotypic b-> None
-
 module CivicSetConstructors =
 
     /// <summary>
@@ -1191,4 +823,405 @@ module CivicSetConstructors =
         (provOption: Provenance option) 
         (ruleOption: CivicSetRule<'T> option)
         : ICivicSet<'T> = mkFiniteSet symbol vals provOption ruleOption
+        
+module Union =
+    /// <summary>
+    /// Extracts the first Provenance entry from metadata if present.
+    /// </summary>
+    /// <returns>Some provenance or None.</returns>
+    /// <signage>Used by constructors to inherit and synthesize derived provenance.</signage>
+    let private pickProvenanceFromSetMetadata (meta: CivicSetMetadataItem list) : Provenance option =
+        meta |> List.tryPick (function Provenance p -> Some p | _ -> None)
+
+    /// <summary>
+    /// Extracts the first SetTheoretic metadata entry from metadata if present.
+    /// </summary>
+    /// <returns>Some set-theoretic metadata or None.</returns>
+    /// <signage>Used during merges to preserve cardinality and ordering overlays.</signage>
+    let private pickSetTheoreticMetadataFromSetMetadata (meta: CivicSetMetadataItem list) : SetTheoreticMetadata option =
+        meta |> List.tryPick (function SetTheoretic st -> Some st | _ -> None)  
+
+    /// <summary>
+    /// Try to obtain the minimal element from a sequence using an optional comparer.
+    /// </summary>
+    /// <returns>Option minimal element or None when no comparer is available.</returns>
+    /// <signage>Utility used by collapse operations to populate Min signage.</signage>
+    let private tryMinByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
+        match compareOpt with
+        | Some cmp -> items |> Seq.sortWith cmp |> Seq.tryHead
+        | None -> None
+
+    /// <summary>
+    /// Try to obtain the maximal element from a sequence using an optional comparer.
+    /// </summary>
+    /// <returns>Option maximal element or None when no comparer is available.</returns>
+    /// <signage>Utility used by collapse operations to populate Max signage.</signage>
+    let private tryMaxByCompare<'T> (compareOpt: option<'T -> 'T -> int>) (items: seq<'T>) : option<'T> =
+        match compareOpt with
+        | Some cmp -> items |> Seq.sortWith (fun x y -> cmp y x) |> Seq.tryHead
+        | None -> None
+
+    /// <summary>
+    /// Synthesize a canonical symbolic union formula from two symbol constants.
+    /// </summary>
+    /// <remarks>
+    /// Produces a quantified formula ∀x. x ∈ A ∨ x ∈ B when symbols are available; used when
+    /// two sets carry only symbol names rather than full formulas.
+    /// </remarks>
+    /// <signage>Emits a compact symbolic union overlay for signage when formulas absent.</signage>
+    let private canonicalUnionFromSymbols (aSym: Symbol) (bSym: Symbol) : Formula<Symbol> =
+        let x = { Name = "x"; Kind = VariableKind; Arity = None }
+        let inA = Formulae.memberOf (Var x) (Constant aSym)
+        let inB = Formulae.memberOf (Var x) (Constant bSym)
+        Quantified { Bound = ForAll x; Body = Formulae.unionFormula inA inB }
+
+    /// <summary>
+    /// Build a synthesized symbolic union using available formulas or symbols from two civic sets.
+    /// </summary>
+    /// <returns>Optional synthesized Formula<Symbol> representing the union.</returns>
+    /// <signage>
+    /// Priority:
+    /// 1. If both sets have symbol-level formulas, union them.
+    /// 2. If both have symbol names, build canonical quantified union from symbols.
+    /// 3. If one side has a formula and the other a symbol, synthesize by combining membership and the formula.
+    /// </signage>
+    let private synthesizeSymbolicUnion (a: ICivicSet<_>) (b: ICivicSet<_>) : Formula<Symbol> option =
+        let fA = a.Formula
+        let fB = b.Formula
+        let sA = a.Symbol |> Option.map (fun n -> { Name = n; Kind = ConstantKind; Arity = None })
+        let sB = b.Symbol |> Option.map (fun n -> { Name = n; Kind = ConstantKind; Arity = None })
+        match fA, fB, sA, sB with
+        | Some fa, Some fb, _, _ -> Some (Formulae.unionFormula fa fb)
+        | None, None, Some sa, Some sb -> Some (canonicalUnionFromSymbols sa sb)
+        | Some fa, None, _, Some sb ->
+            let x = { Name = "x"; Kind = VariableKind; Arity = None }
+            Some (Formulae.unionFormula fa (Formulae.memberOf (Var x) (Constant sb)))
+        | None, Some fb, Some sa, _ ->
+            let x = { Name = "x"; Kind = VariableKind; Arity = None }
+            Some (Formulae.unionFormula (Formulae.memberOf (Var x) (Constant sa)) fb)
+        | _ -> None
+
+    /// <summary>
+    /// Wraps a lifted union into the CivicUnion tagged representation,
+    /// distinguishing homotypic from heterotypic unions.
+    /// </summary>
+    /// <typeparam name="A">Element type of the first set.</typeparam>
+    /// <typeparam name="B">Element type of the second set.</typeparam>
+    /// <param name="liftedSet">Lifted union set to wrap.</param>
+    /// <returns>CivicUnion discriminated union value.</returns>
+    let private wrapCivicUnion<'A,'B>
+        (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
+        : CivicUnion<'A,'B> =
+
+        match liftedSet with
+        | :? HomotypicUnion<'A> as a -> Homotypic a
+        | _ -> Heterotypic liftedSet
+        
+        
+    
+    let tryIndexFlattened = function
+        | IndexFlattened set -> Some set
+        | _ -> None
+
+    let trySequenceFlattened = function
+        | SequenceFlattened set -> Some set
+        | _ -> None
+
+    let tryCrossProduct = function
+        | CrossProduct set -> Some set
+        | _ -> None
+
+    let tryMultisetGlobal = function
+        | MultisetGlobal set -> Some set
+        | _ -> None
+
+    let tryMultisetBySet = function
+        | MultisetBySet set -> Some set
+        | _ -> None
+
+    let tryUnique = function
+        | Unique set -> Some set
+        | _ -> None
+
+    let tryHomotypicLifted = function
+        | Homotypic u -> Some u
+        | _ -> None
+
+    let tryHeterotypicLifted = function
+        | Heterotypic u -> Some u
+        | _ -> None
+ 
+
+    /// <summary>
+    /// Constructs a lifted set-of-sets ICivicSet whose Elements are two Lifted cells wrapping operand sets.
+    /// </summary>
+    /// <param name="aName">Symbolic name for the first operand set, used in provenance and signage synthesis.</param>
+    /// <param name="bName">Symbolic name for the second operand set, used in provenance and signage synthesis.</param>
+    /// <param name="a">First civic set to be lifted and unioned.</param>
+    /// <param name="b">Second civic set to be lifted and unioned.</param>
+    /// <returns>
+    /// A lifted civic set containing wrappers for both input sets, with derived provenance and optional symbolic formula.
+    /// </returns>
+    /// <signage>
+    /// - Tag: LiftedUnion
+    /// - Provenance: derived from parents, step "union/lifted"
+    /// - Metadata: merged SetTheoretic metadata computed from children
+    /// </signage>
+    let mkLiftedSets<'A,'B>
+        (a: ICivicSet<'A>) (b: ICivicSet<'B>)
+        : CivicUnion<'A,'B> =
+
+        // parent provenance
+        let pa = pickProvenanceFromSetMetadata a.Metadata
+        let pb = pickProvenanceFromSetMetadata b.Metadata
+
+        let sharedSource = $"{a.Symbol} ∪ {b.Symbol}"
+
+        let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
+        let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
+
+        // only compute/attach length when both sides claim finiteness
+        let elementCount =
+            match sa, sb with
+            | None, _ | _ , None -> None
+            | Some a, Some b -> 
+                match a.Cardinality, b.Cardinality with
+                | Some (Finite count1) , Some (Finite count2) -> Some (count1 + count2)
+                | _,_ -> None
+
+        // LiftedCell wrappers for both sets (derive provenance step from parents)
+        let cellA : LiftedCell<ICivicSet<'A>> =
+            { Value = a
+              Provenance = Some (Provenance.mkDerived "union(A-wrapper)" "union/lifted" [ pa ]) }
+
+        let cellB : LiftedCell<ICivicSet<'B>> =
+            { Value = b
+              Provenance = Some (Provenance.mkDerived $"union (B-wrapper)" "union/lifted" [ pb ]) }
+
+        let elementsSeq : seq<Lifted<ICivicSet<'A>, ICivicSet<'B>>> = seq { yield A cellA; yield B cellB }
+
+        // set theoretic metadata
+        let sa = pickSetTheoreticMetadataFromSetMetadata a.Metadata
+        let sb = pickSetTheoreticMetadataFromSetMetadata b.Metadata
+        let mergedSetTheoreticMetadata = SetTheoreticMetadata.mergeSetTheoreticMetadata sa sb (elementCount)
+
+        let containsImpl (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool =
+            match z with
+            | A c -> Object.ReferenceEquals(c.Value, a) || (c.Value.Symbol = a.Symbol)
+            | B c -> Object.ReferenceEquals(c.Value, b) || (c.Value.Symbol = b.Symbol)
+            | Nested _ -> false
+
+        // synthesize top-level formula if possible
+        let formulaSymbolicOpt = synthesizeSymbolicUnion a b
+        let formulaOpt =
+            match formulaSymbolicOpt with
+            | Some fs -> Some (box fs :?> Formula<Symbol>)
+            | _ -> None
+
+        let unionSymbol =
+            match a.Symbol, b.Symbol with
+            | Some sa, Some sb -> Some $"{sa} ∪ {sb}"
+            | _ -> None
+
+        let unionProv = Provenance.mkDerived (unionSymbol |> Option.defaultValue sharedSource) "union/lifted" [ pa; pb ]
+
+        { new ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>> with
+            member _.Symbol : string option = unionSymbol
+            member _.Formula : Formula<Symbol> option = formulaOpt
+            member _.Contains (z: Lifted<ICivicSet<'A>, ICivicSet<'B>>) : bool = containsImpl z
+            member _.Elements : seq<Lifted<ICivicSet<'A>, ICivicSet<'B>>> = elementsSeq
+            member _.Compare = None
+            member _.Min = None
+            member _.Max = None
+            member _.Metadata : CivicSetMetadataItem list = [ Tag "LiftedUnion" ] @ [SetTheoretic mergedSetTheoreticMetadata] @ [ Provenance unionProv ]
+            member _.IsClosedUnder _ = SetResult.Default()
+            member _.Implies _ = SetResult.Default()
+            member _.EquivalentTo _ = SetResult.Default() } |> wrapCivicUnion 
+
+    /// <summary>
+    /// Recursively collect Choice<'A,'B> elements from a nested Lifted payload where the Lifted
+    /// payloads are whole ICivicSet instances. When encountering A or B, enumerate that set's Elements.
+    /// </summary>
+    /// <returns>Sequence of Choice representing flattened members.</returns>
+    /// <signage>Handles arbitrarily nested Nested branches so flattening signage can be emitted consistently.</signage>
+    let rec private recFlattenLifted<'A,'B>
+        (lifted: Lifted<ICivicSet<'A>, ICivicSet<'B>>)
+        : seq<Choice<'A,'B>> =
+        seq {
+            match lifted with
+            | A cell ->
+                for e in cell.Value.Elements do
+                    yield Choice1Of2 e
+            | B cell ->
+                for e in cell.Value.Elements do
+                    yield Choice2Of2 e
+            | Nested cell ->
+                // cell.Value is another Lifted<ICivicSet<'A,'S>, ICivicSet<'B,'S>>
+                for inner in recFlattenLifted<'A,'B> cell.Value do
+                    yield inner
+        }
+
+    /// <summary>
+    /// Flatten the lifted set-of-sets into a sequence of Choice<'A,'B>.
+    /// </summary>
+    /// <param name="liftedSet">Lifted set instance.</param>
+    /// <returns>Flattened sequence of members with branch tags.</returns>
+    /// <signage>Used by collapse operations and for readable signage of nested unions.</signage>
+    let flattenLiftedMembersSeq<'A,'B>
+        (liftedSet: ICivicSet<Lifted<ICivicSet<'A>, ICivicSet<'B>>>)
+        : seq<Choice<'A,'B>> =
+        liftedSet.Elements
+        |> Seq.collect (fun top ->
+            match top with
+            | A c -> c.Value.Elements |> Seq.map Choice1Of2
+            | B c -> c.Value.Elements |> Seq.map Choice2Of2
+            | Nested c -> recFlattenLifted<'A,'B> c.Value)
+
+    /// <summary>
+    /// Collapse a lifted set-of-sets into a concrete finite ICivicSet<'T,'S> when both branches contain sets of the same element type 'T.
+    /// </summary>
+    /// <param name="deDuplicate">Whether to distinct elements (default true).</param>
+    /// <param name="collapseWhenProvenanceDiffers">When false and provenance differs, returns None so caller decides.</param>
+    /// <param name="liftedSet">Lifted set-of-sets instance.</param>
+    /// <returns>Some concrete ICivicSet when collapse permitted, otherwise None.</returns>
+    /// <signage>
+    /// Collapse policy:
+    /// - If provenance differs and collapseWhenProvenanceDiffers is false, refuse collapse to preserve lineage.
+    /// - If comparer absent, collapse is refused to prevent accidental reordering semantics.
+    /// - De-duplication uses comparer if requested; otherwise elements concatenated in original order.
+    /// Emits Metadata: Tag "CollapsedFromLiftedUnion" and derived Provenance step "collapse lifted to concrete".
+    /// </signage>
+    /// <remarks> TODO: rework this fuction to work with infinite sets. </remarks>
+    let private collapseLiftedToConcrete<'T>
+        //(equivalenceDepth:int)
+        (deDuplicate: bool)
+        (collapseWhenProvenanceDiffers: bool)
+        (liftedSet: HomotypicUnion<'T>)         
+        : option<ICivicSet<'T>> =
+
+        // collect underlying sets (expecting A and B branches)
+        let parts =            
+            liftedSet.Elements
+            |> Seq.choose (function
+                | A c -> Some (c.Value, c.Provenance)
+                | B c -> Some (c.Value, c.Provenance)
+                | Nested _ -> None)
+            |> Seq.toList
+
+        match parts.IsEmpty with
+        | true-> None
+        | false ->
+            let provs =
+                parts
+                |> List.choose snd
+
+            let distinctSources =
+                provs
+                |> List.map (fun p -> 
+                    match Provenance.GetStepOneProvenance p with
+                    | Some p1 -> Provenance.EmitSourceWithLineageTrail p1
+                    | None -> Provenance.EmitSourceWithLineageTrail p)
+                |> List.distinct
+
+            let isFinite = 
+                parts
+                |> List.map (fun (x,_) -> pickSetTheoreticMetadataFromSetMetadata x.Metadata)
+                |> List.map (fun x -> match x with | None -> None | Some d -> d.Cardinality)
+                |> List.map (fun x -> match x with | Some (Finite _) -> true | _ -> false)
+                |> List.contains false 
+                |> not
+            
+            let canCollapse =           
+                collapseWhenProvenanceDiffers
+                || List.length distinctSources <= 1
+        
+            let comparer =
+                parts
+                |> List.map (fun x -> (fst x).Compare)
+                |> List.tryPick id
+
+            match isFinite, canCollapse, comparer  with 
+            
+            | _, false, _ | _, true, None | false,_,_-> None
+            | true, true, Some c ->
+                // 1) collect all elements (one sequence)
+                let collected : seq<'T> =
+                    parts
+                    |> Seq.collect (fun (set, _) -> set.Elements)
+
+                let distinctByCompare (compareFn: 'T -> 'T -> int) (items: seq<'T>) =
+                    items
+                    |> Seq.sortWith compareFn
+                    |> Seq.fold (fun (acc, lastOpt) item ->
+                        match lastOpt with
+                        | Some last when compareFn last item = 0 -> (acc, lastOpt)
+                        | _ -> (item :: acc, Some item)
+                    ) ([], None)
+                    |> fst
+                    |> List.rev
+
+                // 2) apply deDuplicate or identity (both are seq<'T> -> seq<'T>)
+                let deDuplicated : seq<'T> =
+                    match deDuplicate, comparer with
+                    | true, Some c -> distinctByCompare c collected 
+                    | _, _ -> collected
+                
+                let setTheoreticMetadata = 
+                    let stData = pickSetTheoreticMetadataFromSetMetadata liftedSet.Metadata
+                    match stData with
+                    | Some d -> { d with Cardinality  = Some (Seq.length deDuplicated |> Finite) }
+                    | None -> SetTheoreticMetadata.empty
+
+                let min = 
+                    match deDuplicate, comparer with
+                    | true, Some c -> 
+                        distinctByCompare c collected 
+                        |> tryMinByCompare comparer
+                    | _, _ -> None         
+                
+                let max = 
+                    match deDuplicate, comparer with
+                    | true, Some c -> 
+                        distinctByCompare c collected 
+                        |> tryMaxByCompare comparer
+                    | _, _ -> None
+
+                let formulaOpt: Formula<Symbol> option = liftedSet.Formula
+
+                let parentProvs = parts |> List.map snd
+                let sharedSource = match liftedSet.Symbol with Some s -> s | None -> "collapsed-lifted"
+                let derived = Provenance.mkDerived sharedSource "collapse lifted to concrete"parentProvs
+
+                let symbol = liftedSet.Symbol
+
+                let concrete : ICivicSet<'T> =
+                    //let rec mk =
+                    
+                    { new ICivicSet<'T> with
+                        member _.Symbol = symbol
+                        member _.Formula = formulaOpt
+                        member _.Contains (x:'T) = parts |> Seq.exists (fun (set,_) -> set.Contains x)
+                        member _.Elements = deDuplicated
+                        member _.Compare = comparer
+                        member _.Min = min
+                        member _.Max = max
+                        member _.Metadata = [ Tag "CollapsedFromLiftedUnion" ] @ [ SetTheoretic setTheoreticMetadata ] @ [ Provenance derived ]
+                        member _.IsClosedUnder _ = SetResult.Default()
+                        member _.Implies _ = SetResult.Default()
+                        member _.EquivalentTo _ = SetResult.Default() }
+
+                Some concrete        
+        
+    /// <summary>
+    /// Attempts to collapse any CivicUnion into a concrete civic set when the concrete types align; returns None when types are incompatible.
+    /// </summary>
+    let tryCollapseCivicUnionToConcrete<'A,'B>
+        (deDuplicate: bool)
+        (collapseWhenProvenanceDiffers: bool)
+        (liftedSet: CivicUnion<'A,'B>)
+        : option<ICivicSet<'A>> =
+
+        match liftedSet with
+        | Heterotypic b -> None
+        | Homotypic a -> collapseLiftedToConcrete deDuplicate collapseWhenProvenanceDiffers a
         
